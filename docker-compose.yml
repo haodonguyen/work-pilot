@@ -1,0 +1,44 @@
+services:
+  api:
+    build:
+      context: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://workpilot:workpilot@postgres:5432/workpilot
+      JWT_SECRET: local-development-secret
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+
+  frontend:
+    image: node:23-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    environment:
+      VITE_API_URL: http://localhost:8000
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: workpilot
+      POSTGRES_USER: workpilot
+      POSTGRES_PASSWORD: workpilot
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres-data:

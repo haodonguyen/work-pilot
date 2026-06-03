@@ -1,0 +1,10 @@
+.DS_Store
+*.pyc
+__pycache__/
+.pytest_cache/
+.venv/
+workpilot.db
+node_modules/
+dist/
+*.tsbuildinfo
+.env
