@@ -61,10 +61,12 @@ def handle_job_created(db: Session, job: Job) -> None:
         .filter_by(business_id=job.business_id, trigger="job.created", enabled=True)
         .first()
     )
+    if rule is None:
+        return
     db.add(
         AutomationEvent(
             business_id=job.business_id,
-            rule_id=rule.id if rule else None,
+            rule_id=rule.id,
             job_id=job.id,
             message=render_job_message("Booking confirmation", job),
         )
@@ -77,10 +79,12 @@ def handle_job_completed(db: Session, job: Job) -> None:
         .filter_by(business_id=job.business_id, trigger="job.completed", enabled=True)
         .first()
     )
+    if rule is None:
+        return
     db.add(
         AutomationEvent(
             business_id=job.business_id,
-            rule_id=rule.id if rule else None,
+            rule_id=rule.id,
             job_id=job.id,
             message=render_job_message("Review request", job),
         )

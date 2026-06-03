@@ -118,6 +118,57 @@ def test_automation_rule_lifecycle_creates_test_event():
     assert "Generate payment reminder" in event.json()["message"]
 
 
+def test_disabled_booking_rule_does_not_create_job_event():
+    headers = auth_headers()
+    rules = client.get("/automation-rules", headers=headers)
+    assert rules.status_code == 200
+    booking_rule = next(rule for rule in rules.json() if rule["trigger"] == "job.created")
+
+    disabled = client.put(
+        f"/automation-rules/{booking_rule['id']}",
+        headers=headers,
+        json={"enabled": False},
+    )
+    assert disabled.status_code == 200
+    assert disabled.json()["enabled"] is False
+
+    customer = client.post(
+        "/customers",
+        headers=headers,
+        json={
+            "name": "Sarah Nguyen",
+            "email": "sarah.paused@example.com",
+            "phone": "0400 111 222",
+            "address": "12 Market Street, Richmond VIC",
+            "notes": "Prefers morning cleans",
+        },
+    )
+    assert customer.status_code == 201
+
+    job = client.post(
+        "/jobs",
+        headers=headers,
+        json={
+            "customer_id": customer.json()["id"],
+            "service_type": "Regular clean",
+            "scheduled_at": "2026-06-04T09:00:00",
+            "price": 180,
+            "status": "scheduled",
+            "staff_member": "Mia",
+            "notes": "Bring eco products",
+        },
+    )
+    assert job.status_code == 201
+
+    events = client.get("/automation-events", headers=headers)
+    assert events.status_code == 200
+    assert events.json() == []
+
+    dashboard = client.get("/dashboard", headers=headers)
+    assert dashboard.status_code == 200
+    assert dashboard.json()["automation_events"] == 0
+
+
 def test_overdue_invoice_updates_dashboard_metric():
     headers = auth_headers()
     customer = client.post(
