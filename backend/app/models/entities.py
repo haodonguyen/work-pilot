@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import date, datetime
 from enum import Enum
 
-from sqlalchemy import DateTime, Enum as SqlEnum, Float, ForeignKey, String, Text
+from sqlalchemy import Date, DateTime, Enum as SqlEnum, Float, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -20,6 +20,13 @@ class TemplateType(str, Enum):
     quote_follow_up = "quote_follow_up"
     invoice_reminder = "invoice_reminder"
     review_request = "review_request"
+
+
+class InvoiceStatus(str, Enum):
+    draft = "draft"
+    sent = "sent"
+    paid = "paid"
+    void = "void"
 
 
 class Business(Base):
@@ -53,6 +60,7 @@ class Customer(Base):
     address: Mapped[str | None] = mapped_column(String(300), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     jobs: Mapped[list["Job"]] = relationship(back_populates="customer")
+    invoices: Mapped[list["Invoice"]] = relationship(back_populates="customer")
 
 
 class Job(Base):
@@ -68,6 +76,20 @@ class Job(Base):
     staff_member: Mapped[str | None] = mapped_column(String(160), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     customer: Mapped[Customer] = relationship(back_populates="jobs")
+
+
+class Invoice(Base):
+    __tablename__ = "invoices"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    business_id: Mapped[int] = mapped_column(ForeignKey("businesses.id"), index=True)
+    customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"), index=True)
+    number: Mapped[str] = mapped_column(String(80))
+    amount: Mapped[float] = mapped_column(Float)
+    due_date: Mapped[date] = mapped_column(Date)
+    status: Mapped[InvoiceStatus] = mapped_column(SqlEnum(InvoiceStatus), default=InvoiceStatus.draft)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    customer: Mapped[Customer] = relationship(back_populates="invoices")
 
 
 class MessageTemplate(Base):

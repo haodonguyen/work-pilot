@@ -1,5 +1,7 @@
-from fastapi.testclient import TestClient
+from datetime import date, timedelta
 from uuid import uuid4
+
+from fastapi.testclient import TestClient
 
 from app.main import app
 
@@ -114,3 +116,38 @@ def test_automation_rule_lifecycle_creates_test_event():
     assert event.status_code == 200
     assert event.json()["rule_id"] == rule_id
     assert "Generate payment reminder" in event.json()["message"]
+
+
+def test_overdue_invoice_updates_dashboard_metric():
+    headers = auth_headers()
+    customer = client.post(
+        "/customers",
+        headers=headers,
+        json={
+            "name": "Mason Property Group",
+            "email": "accounts@mason.example",
+            "phone": "0400 333 444",
+            "address": "45 Collins Street, Melbourne VIC",
+            "notes": "Monthly commercial clean",
+        },
+    )
+    assert customer.status_code == 201
+
+    invoice = client.post(
+        "/invoices",
+        headers=headers,
+        json={
+            "customer_id": customer.json()["id"],
+            "number": "INV-1001",
+            "amount": 890,
+            "due_date": (date.today() - timedelta(days=3)).isoformat(),
+            "status": "sent",
+            "notes": "June cleaning package",
+        },
+    )
+    assert invoice.status_code == 201
+    assert invoice.json()["number"] == "INV-1001"
+
+    dashboard = client.get("/dashboard", headers=headers)
+    assert dashboard.status_code == 200
+    assert dashboard.json()["overdue_invoices"] == 1

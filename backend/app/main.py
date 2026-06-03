@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import ai, auth, automations, customers, dashboard, jobs, templates
+from app.api.routes import ai, auth, automations, customers, dashboard, invoices, jobs, templates
 from app.core.database import Base, engine
 
 Base.metadata.create_all(bind=engine)
@@ -24,6 +24,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(customers.router)
 app.include_router(jobs.router)
+app.include_router(invoices.router)
 app.include_router(automations.router)
 app.include_router(templates.router)
 app.include_router(dashboard.router)

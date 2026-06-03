@@ -6,6 +6,7 @@ import {
   CalendarClock,
   CheckCircle2,
   ClipboardList,
+  FileText,
   Clock3,
   GitBranch,
   HelpCircle,
@@ -30,7 +31,7 @@ import {
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
-import { api, AutomationEvent, AutomationRule, AutomationRuleInput, clearToken, Customer, Dashboard, Job, MessageTemplate, setToken } from "../lib/api";
+import { api, AutomationEvent, AutomationRule, AutomationRuleInput, clearToken, Customer, Dashboard, Invoice, Job, MessageTemplate, setToken } from "../lib/api";
 
 type User = { name: string; email: string; business: { name: string } };
 type WorkspaceView = "dashboard" | "automations";
@@ -306,6 +307,58 @@ function JobForm(props: { customers: Customer[]; onCreate: () => void }) {
   );
 }
 
+function InvoiceForm(props: { customers: Customer[]; onCreate: () => void }) {
+  const firstCustomer = props.customers[0]?.id ?? 0;
+  const [customerId, setCustomerId] = useState(firstCustomer);
+  const [number, setNumber] = useState("INV-1001");
+  const [amount, setAmount] = useState(890);
+  const [dueDate, setDueDate] = useState("2026-06-01");
+
+  useEffect(() => {
+    if (!customerId && firstCustomer) setCustomerId(firstCustomer);
+  }, [customerId, firstCustomer]);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!customerId) return;
+    await api.createInvoice({
+      customer_id: customerId,
+      number,
+      amount,
+      due_date: dueDate,
+      status: "sent",
+      notes: "",
+    });
+    props.onCreate();
+  }
+
+  return (
+    <form className="inlineForm" onSubmit={submit}>
+      <Field label="Customer">
+        <select value={customerId} onChange={(event) => setCustomerId(Number(event.target.value))}>
+          {props.customers.map((customer) => (
+            <option key={customer.id} value={customer.id}>
+              {customer.name}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Invoice">
+        <input value={number} onChange={(event) => setNumber(event.target.value)} />
+      </Field>
+      <Field label="Due">
+        <input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} />
+      </Field>
+      <Field label="Amount">
+        <input type="number" value={amount} onChange={(event) => setAmount(Number(event.target.value))} />
+      </Field>
+      <button className="iconButton" type="submit" aria-label="Add invoice" title="Add invoice">
+        <Plus size={18} />
+      </button>
+    </form>
+  );
+}
+
 function AutomationsBuilder(props: {
   rules: AutomationRule[];
   events: AutomationEvent[];
@@ -499,16 +552,18 @@ function Workspace(props: { user: User; onLogout: () => void }) {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [events, setEvents] = useState<AutomationEvent[]>([]);
   const [rules, setRules] = useState<AutomationRule[]>([]);
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [suggestions, setSuggestions] = useState<{ title: string; reason: string; rule: string }[]>([]);
 
   async function refresh() {
-    const [nextDashboard, nextCustomers, nextJobs, nextEvents, nextRules, nextTemplates, nextSuggestions] = await Promise.all([
+    const [nextDashboard, nextCustomers, nextJobs, nextInvoices, nextEvents, nextRules, nextTemplates, nextSuggestions] = await Promise.all([
       api.dashboard(),
       api.customers(),
       api.jobs(),
+      api.invoices(),
       api.events(),
       api.rules(),
       api.templates(),
@@ -517,6 +572,7 @@ function Workspace(props: { user: User; onLogout: () => void }) {
     setDashboard(nextDashboard);
     setCustomers(nextCustomers);
     setJobs(nextJobs);
+    setInvoices(nextInvoices);
     setEvents(nextEvents);
     setRules(nextRules);
     setTemplates(nextTemplates);
@@ -531,6 +587,11 @@ function Workspace(props: { user: User; onLogout: () => void }) {
 
   async function completeJob(job: Job) {
     await api.completeJob(job);
+    await refresh();
+  }
+
+  async function markInvoicePaid(invoice: Invoice) {
+    await api.markInvoicePaid(invoice);
     await refresh();
   }
 
@@ -615,6 +676,32 @@ function Workspace(props: { user: User; onLogout: () => void }) {
                 </article>
               ))}
             </div>
+          </div>
+        </section>
+
+        <section className="panel" id="invoices">
+          <div className="panelHeader">
+            <h2>Invoices</h2>
+            <span>{invoices.length}</span>
+          </div>
+          <InvoiceForm customers={customers} onCreate={refresh} />
+          <div className="list">
+            {invoices.map((invoice) => (
+              <article key={invoice.id} className="rowItem split">
+                <div>
+                  <strong>{invoice.number}</strong>
+                  <span>{invoice.customer.name} · ${invoice.amount}</span>
+                  <small>Due {new Date(`${invoice.due_date}T00:00:00`).toLocaleDateString()}</small>
+                </div>
+                {invoice.status !== "paid" ? (
+                  <button className="iconButton" onClick={() => markInvoicePaid(invoice)} aria-label="Mark invoice paid" title="Mark invoice paid">
+                    <FileText size={18} />
+                  </button>
+                ) : (
+                  <span className="statusPill">Paid</span>
+                )}
+              </article>
+            ))}
           </div>
         </section>
 

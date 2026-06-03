@@ -21,6 +21,17 @@ export type Job = {
   customer: Customer;
 };
 
+export type Invoice = {
+  id: number;
+  customer_id: number;
+  number: string;
+  amount: number;
+  due_date: string;
+  status: "draft" | "sent" | "paid" | "void";
+  notes?: string;
+  customer: Customer;
+};
+
 export type Dashboard = {
   todays_jobs: number;
   upcoming_bookings: number;
@@ -103,6 +114,11 @@ export const api = {
     request<Job>("/jobs", { method: "POST", body: JSON.stringify(body) }),
   completeJob: (job: Job) =>
     request<Job>(`/jobs/${job.id}`, { method: "PUT", body: JSON.stringify({ status: "completed" }) }),
+  invoices: () => request<Invoice[]>("/invoices"),
+  createInvoice: (body: Omit<Invoice, "id" | "customer">) =>
+    request<Invoice>("/invoices", { method: "POST", body: JSON.stringify(body) }),
+  markInvoicePaid: (invoice: Invoice) =>
+    request<Invoice>(`/invoices/${invoice.id}`, { method: "PUT", body: JSON.stringify({ status: "paid" }) }),
   events: () => request<AutomationEvent[]>("/automation-events"),
   rules: () => request<AutomationRule[]>("/automation-rules"),
   createRule: (body: AutomationRuleInput) =>
