@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
-import { api, AutomationEvent, AutomationRule, AutomationRuleInput, clearToken, Customer, Dashboard, Invoice, Job, MessageTemplate, setToken } from "../lib/api";
+import { api, AutomationEvent, AutomationRule, AutomationRuleInput, clearToken, Customer, Dashboard, Invoice, Job, MessageTemplate, QuoteRecord, setToken } from "../lib/api";
 
 type User = { name: string; email: string; business: { name: string } };
 type WorkspaceView = "dashboard" | "automations";
@@ -359,6 +359,63 @@ function InvoiceForm(props: { customers: Customer[]; onCreate: () => void }) {
   );
 }
 
+function QuoteForm(props: { customers: Customer[]; onCreate: () => void }) {
+  const firstCustomer = props.customers[0]?.id ?? 0;
+  const [customerId, setCustomerId] = useState(firstCustomer);
+  const [number, setNumber] = useState("QUO-1001");
+  const [serviceType, setServiceType] = useState("Office deep clean");
+  const [amount, setAmount] = useState(1250);
+  const [validUntil, setValidUntil] = useState("2026-06-30");
+
+  useEffect(() => {
+    if (!customerId && firstCustomer) setCustomerId(firstCustomer);
+  }, [customerId, firstCustomer]);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!customerId) return;
+    await api.createQuote({
+      customer_id: customerId,
+      number,
+      service_type: serviceType,
+      amount,
+      valid_until: validUntil,
+      status: "sent",
+      notes: "",
+    });
+    props.onCreate();
+  }
+
+  return (
+    <form className="inlineForm" onSubmit={submit}>
+      <Field label="Customer">
+        <select value={customerId} onChange={(event) => setCustomerId(Number(event.target.value))}>
+          {props.customers.map((customer) => (
+            <option key={customer.id} value={customer.id}>
+              {customer.name}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Quote">
+        <input value={number} onChange={(event) => setNumber(event.target.value)} />
+      </Field>
+      <Field label="Service">
+        <input value={serviceType} onChange={(event) => setServiceType(event.target.value)} />
+      </Field>
+      <Field label="Valid">
+        <input type="date" value={validUntil} onChange={(event) => setValidUntil(event.target.value)} />
+      </Field>
+      <Field label="Amount">
+        <input type="number" value={amount} onChange={(event) => setAmount(Number(event.target.value))} />
+      </Field>
+      <button className="iconButton" type="submit" aria-label="Add quote" title="Add quote">
+        <Plus size={18} />
+      </button>
+    </form>
+  );
+}
+
 function AutomationsBuilder(props: {
   rules: AutomationRule[];
   events: AutomationEvent[];
@@ -553,17 +610,19 @@ function Workspace(props: { user: User; onLogout: () => void }) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
   const [events, setEvents] = useState<AutomationEvent[]>([]);
   const [rules, setRules] = useState<AutomationRule[]>([]);
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [suggestions, setSuggestions] = useState<{ title: string; reason: string; rule: string }[]>([]);
 
   async function refresh() {
-    const [nextDashboard, nextCustomers, nextJobs, nextInvoices, nextEvents, nextRules, nextTemplates, nextSuggestions] = await Promise.all([
+    const [nextDashboard, nextCustomers, nextJobs, nextInvoices, nextQuotes, nextEvents, nextRules, nextTemplates, nextSuggestions] = await Promise.all([
       api.dashboard(),
       api.customers(),
       api.jobs(),
       api.invoices(),
+      api.quotes(),
       api.events(),
       api.rules(),
       api.templates(),
@@ -573,6 +632,7 @@ function Workspace(props: { user: User; onLogout: () => void }) {
     setCustomers(nextCustomers);
     setJobs(nextJobs);
     setInvoices(nextInvoices);
+    setQuotes(nextQuotes);
     setEvents(nextEvents);
     setRules(nextRules);
     setTemplates(nextTemplates);
@@ -592,6 +652,16 @@ function Workspace(props: { user: User; onLogout: () => void }) {
 
   async function markInvoicePaid(invoice: Invoice) {
     await api.markInvoicePaid(invoice);
+    await refresh();
+  }
+
+  async function acceptQuote(quote: QuoteRecord) {
+    await api.acceptQuote(quote);
+    await refresh();
+  }
+
+  async function declineQuote(quote: QuoteRecord) {
+    await api.declineQuote(quote);
     await refresh();
   }
 
@@ -676,6 +746,37 @@ function Workspace(props: { user: User; onLogout: () => void }) {
                 </article>
               ))}
             </div>
+          </div>
+        </section>
+
+        <section className="panel" id="quotes">
+          <div className="panelHeader">
+            <h2>Quotes</h2>
+            <span>{quotes.length}</span>
+          </div>
+          <QuoteForm customers={customers} onCreate={refresh} />
+          <div className="list">
+            {quotes.map((quote) => (
+              <article key={quote.id} className="rowItem split">
+                <div>
+                  <strong>{quote.number}</strong>
+                  <span>{quote.customer.name} · {quote.service_type} · ${quote.amount}</span>
+                  <small>Valid until {new Date(`${quote.valid_until}T00:00:00`).toLocaleDateString()}</small>
+                </div>
+                {quote.status === "sent" ? (
+                  <div className="rowActions">
+                    <button className="iconButton" onClick={() => acceptQuote(quote)} aria-label="Accept quote" title="Accept quote">
+                      <CheckCircle2 size={18} />
+                    </button>
+                    <button className="iconButton" onClick={() => declineQuote(quote)} aria-label="Decline quote" title="Decline quote">
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                ) : (
+                  <span className="statusPill">{quote.status}</span>
+                )}
+              </article>
+            ))}
           </div>
         </section>
 

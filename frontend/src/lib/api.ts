@@ -32,6 +32,18 @@ export type Invoice = {
   customer: Customer;
 };
 
+export type QuoteRecord = {
+  id: number;
+  customer_id: number;
+  number: string;
+  service_type: string;
+  amount: number;
+  valid_until: string;
+  status: "draft" | "sent" | "accepted" | "declined";
+  notes?: string;
+  customer: Customer;
+};
+
 export type Dashboard = {
   todays_jobs: number;
   upcoming_bookings: number;
@@ -119,6 +131,13 @@ export const api = {
     request<Invoice>("/invoices", { method: "POST", body: JSON.stringify(body) }),
   markInvoicePaid: (invoice: Invoice) =>
     request<Invoice>(`/invoices/${invoice.id}`, { method: "PUT", body: JSON.stringify({ status: "paid" }) }),
+  quotes: () => request<QuoteRecord[]>("/quotes"),
+  createQuote: (body: Omit<QuoteRecord, "id" | "customer">) =>
+    request<QuoteRecord>("/quotes", { method: "POST", body: JSON.stringify(body) }),
+  acceptQuote: (quote: QuoteRecord) =>
+    request<QuoteRecord>(`/quotes/${quote.id}`, { method: "PUT", body: JSON.stringify({ status: "accepted" }) }),
+  declineQuote: (quote: QuoteRecord) =>
+    request<QuoteRecord>(`/quotes/${quote.id}`, { method: "PUT", body: JSON.stringify({ status: "declined" }) }),
   events: () => request<AutomationEvent[]>("/automation-events"),
   rules: () => request<AutomationRule[]>("/automation-rules"),
   createRule: (body: AutomationRuleInput) =>

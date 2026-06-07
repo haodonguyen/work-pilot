@@ -202,3 +202,39 @@ def test_overdue_invoice_updates_dashboard_metric():
     dashboard = client.get("/dashboard", headers=headers)
     assert dashboard.status_code == 200
     assert dashboard.json()["overdue_invoices"] == 1
+
+
+def test_pending_quote_updates_dashboard_metric():
+    headers = auth_headers()
+    customer = client.post(
+        "/customers",
+        headers=headers,
+        json={
+            "name": "Greenline Offices",
+            "email": "ops@greenline.example",
+            "phone": "0400 555 666",
+            "address": "88 King Street, Melbourne VIC",
+            "notes": "Needs after-hours cleaning",
+        },
+    )
+    assert customer.status_code == 201
+
+    quote = client.post(
+        "/quotes",
+        headers=headers,
+        json={
+            "customer_id": customer.json()["id"],
+            "number": "QUO-1001",
+            "service_type": "Office deep clean",
+            "amount": 1250,
+            "valid_until": (date.today() + timedelta(days=14)).isoformat(),
+            "status": "sent",
+            "notes": "Includes windows and carpets",
+        },
+    )
+    assert quote.status_code == 201
+    assert quote.json()["number"] == "QUO-1001"
+
+    dashboard = client.get("/dashboard", headers=headers)
+    assert dashboard.status_code == 200
+    assert dashboard.json()["pending_quotes"] == 1

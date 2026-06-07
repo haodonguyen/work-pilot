@@ -808,6 +808,10 @@ select {
   grid-template-columns: repeat(4, minmax(100px, 1fr)) 42px;
 }
 
+#quotes .inlineForm {
+  grid-template-columns: repeat(5, minmax(92px, 1fr)) 42px;
+}
+
 .list {
   display: grid;
   gap: 10px;
@@ -828,6 +832,11 @@ select {
 .rowItem.split {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
+}
+
+.rowActions {
+  display: flex;
+  gap: 8px;
 }
 
 .rowItem small,

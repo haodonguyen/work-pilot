@@ -29,6 +29,13 @@ class InvoiceStatus(str, Enum):
     void = "void"
 
 
+class QuoteStatus(str, Enum):
+    draft = "draft"
+    sent = "sent"
+    accepted = "accepted"
+    declined = "declined"
+
+
 class Business(Base):
     __tablename__ = "businesses"
 
@@ -61,6 +68,7 @@ class Customer(Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     jobs: Mapped[list["Job"]] = relationship(back_populates="customer")
     invoices: Mapped[list["Invoice"]] = relationship(back_populates="customer")
+    quotes: Mapped[list["Quote"]] = relationship(back_populates="customer")
 
 
 class Job(Base):
@@ -90,6 +98,21 @@ class Invoice(Base):
     status: Mapped[InvoiceStatus] = mapped_column(SqlEnum(InvoiceStatus), default=InvoiceStatus.draft)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     customer: Mapped[Customer] = relationship(back_populates="invoices")
+
+
+class Quote(Base):
+    __tablename__ = "quotes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    business_id: Mapped[int] = mapped_column(ForeignKey("businesses.id"), index=True)
+    customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"), index=True)
+    number: Mapped[str] = mapped_column(String(80))
+    service_type: Mapped[str] = mapped_column(String(160))
+    amount: Mapped[float] = mapped_column(Float)
+    valid_until: Mapped[date] = mapped_column(Date)
+    status: Mapped[QuoteStatus] = mapped_column(SqlEnum(QuoteStatus), default=QuoteStatus.draft)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    customer: Mapped[Customer] = relationship(back_populates="quotes")
 
 
 class MessageTemplate(Base):

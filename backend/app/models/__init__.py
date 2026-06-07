@@ -8,6 +8,8 @@ from app.models.entities import (
     Job,
     JobStatus,
     MessageTemplate,
+    Quote,
+    QuoteStatus,
     TemplateType,
     User,
 )
@@ -22,6 +24,8 @@ __all__ = [
     "Job",
     "JobStatus",
     "MessageTemplate",
+    "Quote",
+    "QuoteStatus",
     "TemplateType",
     "User",
 ]

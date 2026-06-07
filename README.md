@@ -1,6 +1,6 @@
 # WorkPilot
 
-WorkPilot is an AI automation platform MVP for small Australian service businesses. It helps teams manage customers, jobs, invoices, simulated booking confirmations and review requests, automation activity, and AI-style workflow suggestions.
+WorkPilot is an AI automation platform MVP for small Australian service businesses. It helps teams manage customers, jobs, quotes, invoices, simulated booking confirmations and review requests, automation activity, and AI-style workflow suggestions.
 
 Project location on this machine:
 
@@ -14,6 +14,7 @@ Project location on this machine:
 - Business-scoped owner accounts
 - Customer CRUD
 - Job CRUD with simulated automation events
+- Quote CRUD with pending quote dashboard counts
 - Invoice CRUD with overdue dashboard counts
 - Dashboard metrics and estimated admin time saved
 - Default automation rules and message templates
@@ -82,6 +83,7 @@ docker compose up --build
 - `GET /auth/me`
 - `GET/POST /customers`
 - `GET/POST /jobs`
+- `GET/POST /quotes`
 - `GET/POST /invoices`
 - `GET /dashboard`
 - `GET /automation-rules`
@@ -91,7 +93,7 @@ docker compose up --build
 
 ## Next Milestones
 
-1. Add quote models and pending quote follow-up rules.
+1. Add pending quote follow-up automation rules.
 2. Add Alembic migrations and switch local dev to PostgreSQL by default.
 3. Add Celery worker tasks for scheduled reminders.
 4. Replace simulated AI suggestions with OpenAI API integration.
