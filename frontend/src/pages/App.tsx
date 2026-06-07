@@ -15,6 +15,7 @@ import {
   PlayCircle,
   Plus,
   Quote,
+  Repeat2,
   Search,
   Send,
   Settings,
@@ -486,6 +487,12 @@ function AutomationsBuilder(props: {
     setStatus("Test event queued in Activity.");
   }
 
+  async function runQuoteFollowups() {
+    const events = await api.runQuoteFollowups();
+    await props.onRefresh();
+    setStatus(events.length ? `${events.length} quote follow-up${events.length === 1 ? "" : "s"} generated.` : "No pending quotes need follow-up.");
+  }
+
   async function deleteRule() {
     if (!selectedRule) return;
     await api.deleteRule(selectedRule.id);
@@ -573,6 +580,7 @@ function AutomationsBuilder(props: {
               <span>{draft.enabled ? "Enabled" : "Paused"}</span>
             </label>
             <button className="secondaryButton compact" type="button" onClick={testRule}><TestTube2 size={17} /> Test</button>
+            <button className="secondaryButton compact" type="button" onClick={runQuoteFollowups}><Repeat2 size={17} /> Run Quote Follow-ups</button>
             {selectedRule && <button className="dangerButton compact" type="button" onClick={deleteRule}><Trash2 size={17} /> Delete</button>}
             <button className="primaryButton compact" type="submit"><CheckCircle2 size={17} /> Save</button>
           </div>

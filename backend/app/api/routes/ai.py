@@ -1,9 +1,11 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.deps import current_user
 from app.core.database import get_db
-from app.models import AutomationEvent, Job, JobStatus, User
+from app.models import AutomationEvent, Job, JobStatus, Quote, QuoteStatus, User
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
@@ -11,8 +13,25 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 @router.post("/suggest-automations")
 def suggest_automations(user: User = Depends(current_user), db: Session = Depends(get_db)):
     completed = db.query(Job).filter_by(business_id=user.business_id, status=JobStatus.completed).count()
+    pending_quotes = (
+        db.query(Quote)
+        .filter(
+            Quote.business_id == user.business_id,
+            Quote.status == QuoteStatus.sent,
+            Quote.valid_until >= date.today(),
+        )
+        .count()
+    )
     events = db.query(AutomationEvent).filter_by(business_id=user.business_id).count()
     suggestions = []
+    if pending_quotes:
+        suggestions.append(
+            {
+                "title": "Follow up open quotes",
+                "reason": f"{pending_quotes} sent quotes are waiting for a customer decision.",
+                "rule": "When quote is pending -> generate follow-up",
+            }
+        )
     if completed:
         suggestions.append(
             {

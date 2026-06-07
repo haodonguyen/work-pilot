@@ -16,6 +16,7 @@ Project location on this machine:
 - Job CRUD with simulated automation events
 - Quote CRUD with pending quote dashboard counts
 - Invoice CRUD with overdue dashboard counts
+- Quote follow-up automation runner
 - Dashboard metrics and estimated admin time saved
 - Default automation rules and message templates
 - React + TypeScript frontend with a Stitch-inspired landing page and operational dashboard
@@ -87,14 +88,15 @@ docker compose up --build
 - `GET/POST /invoices`
 - `GET /dashboard`
 - `GET /automation-rules`
+- `POST /automation-rules/run-quote-followups`
 - `GET /automation-events`
 - `GET /templates`
 - `POST /ai/suggest-automations`
 
 ## Next Milestones
 
-1. Add pending quote follow-up automation rules.
-2. Add Alembic migrations and switch local dev to PostgreSQL by default.
-3. Add Celery worker tasks for scheduled reminders.
-4. Replace simulated AI suggestions with OpenAI API integration.
+1. Add Alembic migrations and switch local dev to PostgreSQL by default.
+2. Add Celery worker tasks for scheduled reminders.
+3. Replace simulated AI suggestions with OpenAI API integration.
+4. Add explicit quote and invoice status transition endpoints.
 5. Expand tests around permissions, update/delete flows, and automation edge cases.

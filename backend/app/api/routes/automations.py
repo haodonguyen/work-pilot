@@ -5,6 +5,7 @@ from app.api.deps import current_user
 from app.core.database import get_db
 from app.models import AutomationEvent, AutomationRule, User
 from app.schemas.automation import AutomationEventOut, AutomationRuleCreate, AutomationRuleOut, AutomationRuleUpdate
+from app.services.automation import handle_pending_quote_followups
 
 router = APIRouter(tags=["automation"])
 
@@ -58,6 +59,15 @@ def test_rule(rule_id: int, user: User = Depends(current_user), db: Session = De
     db.commit()
     db.refresh(event)
     return event
+
+
+@router.post("/automation-rules/run-quote-followups", response_model=list[AutomationEventOut])
+def run_quote_followups(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    events = handle_pending_quote_followups(db, user.business_id)
+    db.commit()
+    for event in events:
+        db.refresh(event)
+    return events
 
 
 @router.get("/automation-events", response_model=list[AutomationEventOut])

@@ -148,6 +148,8 @@ export const api = {
     request<void>(`/automation-rules/${id}`, { method: "DELETE" }),
   testRule: (id: number) =>
     request<AutomationEvent>(`/automation-rules/${id}/test`, { method: "POST" }),
+  runQuoteFollowups: () =>
+    request<AutomationEvent[]>("/automation-rules/run-quote-followups", { method: "POST" }),
   templates: () => request<MessageTemplate[]>("/templates"),
   suggestions: () => request<{ suggestions: { title: string; reason: string; rule: string }[] }>("/ai/suggest-automations", { method: "POST" }),
 };

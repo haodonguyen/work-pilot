@@ -296,3 +296,74 @@ def test_pending_quote_metric_excludes_closed_draft_and_expired_quotes():
     dashboard = client.get("/dashboard", headers=headers)
     assert dashboard.status_code == 200
     assert dashboard.json()["pending_quotes"] == 0
+
+
+def test_quote_followup_automation_creates_one_event_per_pending_quote():
+    headers = auth_headers()
+    customer = client.post(
+        "/customers",
+        headers=headers,
+        json={
+            "name": "Bright Dental",
+            "email": "admin@bright.example",
+            "phone": "0400 999 111",
+            "address": "10 Chapel Street, South Yarra VIC",
+            "notes": "Wants chair room cleaning quote",
+        },
+    )
+    assert customer.status_code == 201
+
+    quote = client.post(
+        "/quotes",
+        headers=headers,
+        json={
+            "customer_id": customer.json()["id"],
+            "number": "QUO-FOLLOW",
+            "service_type": "Dental clinic clean",
+            "amount": 1750,
+            "valid_until": (date.today() + timedelta(days=7)).isoformat(),
+            "status": "sent",
+            "notes": "",
+        },
+    )
+    assert quote.status_code == 201
+
+    suggestions = client.post("/ai/suggest-automations", headers=headers)
+    assert suggestions.status_code == 200
+    assert suggestions.json()["suggestions"][0]["title"] == "Follow up open quotes"
+
+    rules = client.get("/automation-rules", headers=headers)
+    assert rules.status_code == 200
+    quote_rule = next(rule for rule in rules.json() if rule["trigger"] == "quote.pending")
+
+    first_run = client.post("/automation-rules/run-quote-followups", headers=headers)
+    assert first_run.status_code == 200
+    assert len(first_run.json()) == 1
+    assert first_run.json()[0]["rule_id"] == quote_rule["id"]
+    assert "Quote follow-up generated for Bright Dental: QUO-FOLLOW" in first_run.json()[0]["message"]
+
+    second_run = client.post("/automation-rules/run-quote-followups", headers=headers)
+    assert second_run.status_code == 200
+    assert second_run.json() == []
+
+    disabled = client.put(f"/automation-rules/{quote_rule['id']}", headers=headers, json={"enabled": False})
+    assert disabled.status_code == 200
+
+    another_quote = client.post(
+        "/quotes",
+        headers=headers,
+        json={
+            "customer_id": customer.json()["id"],
+            "number": "QUO-PAUSED",
+            "service_type": "Dental reception clean",
+            "amount": 620,
+            "valid_until": (date.today() + timedelta(days=7)).isoformat(),
+            "status": "sent",
+            "notes": "",
+        },
+    )
+    assert another_quote.status_code == 201
+
+    paused_run = client.post("/automation-rules/run-quote-followups", headers=headers)
+    assert paused_run.status_code == 200
+    assert paused_run.json() == []
