@@ -27,6 +27,7 @@ import {
   Users,
   Wallet,
   Wand2,
+  XCircle,
   Zap,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
@@ -43,6 +44,12 @@ const EMPTY_RULE: AutomationRuleInput = {
   action: "Generate appointment reminder",
   enabled: true,
 };
+
+function dateInputDaysFromNow(days: number) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
 
 function Field(props: { label: string; children: React.ReactNode }) {
   return (
@@ -365,7 +372,7 @@ function QuoteForm(props: { customers: Customer[]; onCreate: () => void }) {
   const [number, setNumber] = useState("QUO-1001");
   const [serviceType, setServiceType] = useState("Office deep clean");
   const [amount, setAmount] = useState(1250);
-  const [validUntil, setValidUntil] = useState("2026-06-30");
+  const [validUntil, setValidUntil] = useState(() => dateInputDaysFromNow(14));
 
   useEffect(() => {
     if (!customerId && firstCustomer) setCustomerId(firstCustomer);
@@ -769,7 +776,7 @@ function Workspace(props: { user: User; onLogout: () => void }) {
                       <CheckCircle2 size={18} />
                     </button>
                     <button className="iconButton" onClick={() => declineQuote(quote)} aria-label="Decline quote" title="Decline quote">
-                      <Trash2 size={18} />
+                      <XCircle size={18} />
                     </button>
                   </div>
                 ) : (

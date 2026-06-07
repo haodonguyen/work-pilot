@@ -238,3 +238,61 @@ def test_pending_quote_updates_dashboard_metric():
     dashboard = client.get("/dashboard", headers=headers)
     assert dashboard.status_code == 200
     assert dashboard.json()["pending_quotes"] == 1
+
+
+def test_pending_quote_metric_excludes_closed_draft_and_expired_quotes():
+    headers = auth_headers()
+    customer = client.post(
+        "/customers",
+        headers=headers,
+        json={
+            "name": "Northside Clinic",
+            "email": "ops@northside.example",
+            "phone": "0400 777 888",
+            "address": "22 Lygon Street, Carlton VIC",
+            "notes": "Clinic cleaning quote",
+        },
+    )
+    assert customer.status_code == 201
+    customer_id = customer.json()["id"]
+
+    quote_payloads = [
+        ("QUO-SENT", "sent", date.today() + timedelta(days=14)),
+        ("QUO-DRAFT", "draft", date.today() + timedelta(days=14)),
+        ("QUO-ACCEPTED", "accepted", date.today() + timedelta(days=14)),
+        ("QUO-DECLINED", "declined", date.today() + timedelta(days=14)),
+        ("QUO-EXPIRED", "sent", date.today() - timedelta(days=1)),
+    ]
+    created_quotes = {}
+    for number, status, valid_until in quote_payloads:
+        response = client.post(
+            "/quotes",
+            headers=headers,
+            json={
+                "customer_id": customer_id,
+                "number": number,
+                "service_type": "Clinic deep clean",
+                "amount": 1450,
+                "valid_until": valid_until.isoformat(),
+                "status": status,
+                "notes": "",
+            },
+        )
+        assert response.status_code == 201
+        created_quotes[number] = response.json()
+
+    dashboard = client.get("/dashboard", headers=headers)
+    assert dashboard.status_code == 200
+    assert dashboard.json()["pending_quotes"] == 1
+
+    accepted = client.put(
+        f"/quotes/{created_quotes['QUO-SENT']['id']}",
+        headers=headers,
+        json={"status": "accepted"},
+    )
+    assert accepted.status_code == 200
+    assert accepted.json()["status"] == "accepted"
+
+    dashboard = client.get("/dashboard", headers=headers)
+    assert dashboard.status_code == 200
+    assert dashboard.json()["pending_quotes"] == 0
