@@ -1,6 +1,12 @@
 # WorkPilot
 
-WorkPilot is an AI automation platform MVP for small Australian service businesses. It helps teams manage customers and jobs, simulate booking confirmations and review requests, view automation activity, and surface AI-style workflow suggestions.
+WorkPilot is an AI automation platform MVP for small Australian service businesses. It helps teams manage customers, jobs, invoices, simulated booking confirmations and review requests, automation activity, and AI-style workflow suggestions.
+
+Project location on this machine:
+
+```bash
+/Users/haodonguyen/Hao/IT/FlowMate
+```
 
 ## Current MVP
 
@@ -8,6 +14,7 @@ WorkPilot is an AI automation platform MVP for small Australian service business
 - Business-scoped owner accounts
 - Customer CRUD
 - Job CRUD with simulated automation events
+- Invoice CRUD with overdue dashboard counts
 - Dashboard metrics and estimated admin time saved
 - Default automation rules and message templates
 - React + TypeScript frontend with a Stitch-inspired landing page and operational dashboard
@@ -15,14 +22,43 @@ WorkPilot is an AI automation platform MVP for small Australian service business
 
 ## Run Locally
 
+From the project root:
+
+```bash
+make setup
+```
+
+Start the backend in one terminal:
+
+```bash
+make backend
+```
+
+Start the frontend in another terminal:
+
+```bash
+make frontend
+```
+
+Open `http://127.0.0.1:5174/`.
+
+Useful checks:
+
+```bash
+make test
+make build
+```
+
+The default local SQLite database is always stored at the project root as `workpilot.db`, regardless of whether commands are launched from the root or `backend/`.
+
+## Manual Commands
+
 Backend:
 
 ```bash
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+python3 -m venv backend/.venv
+backend/.venv/bin/pip install -r backend/requirements.txt
+backend/.venv/bin/uvicorn app.main:app --app-dir backend --reload --host 127.0.0.1 --port 8000
 ```
 
 Frontend:
@@ -30,10 +66,8 @@ Frontend:
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev -- --host 127.0.0.1 --port 5174
 ```
-
-Open `http://localhost:5173`.
 
 Docker:
 
@@ -48,6 +82,7 @@ docker compose up --build
 - `GET /auth/me`
 - `GET/POST /customers`
 - `GET/POST /jobs`
+- `GET/POST /invoices`
 - `GET /dashboard`
 - `GET /automation-rules`
 - `GET /automation-events`
@@ -56,8 +91,8 @@ docker compose up --build
 
 ## Next Milestones
 
-1. Add Alembic migrations and switch local dev to PostgreSQL by default.
-2. Add quote and invoice models with overdue follow-up rules.
+1. Add quote models and pending quote follow-up rules.
+2. Add Alembic migrations and switch local dev to PostgreSQL by default.
 3. Add Celery worker tasks for scheduled reminders.
 4. Replace simulated AI suggestions with OpenAI API integration.
 5. Expand tests around permissions, update/delete flows, and automation edge cases.
