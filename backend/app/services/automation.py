@@ -102,6 +102,14 @@ def find_enabled_rule(db: Session, business_id: int, trigger: str) -> Automation
     return db.query(AutomationRule).filter_by(business_id=business_id, trigger=trigger, enabled=True).first()
 
 
+def build_dedupe_key(business_id: int, rule_id: int, entity_type: str, entity_id: int) -> str:
+    return f"business:{business_id}:rule:{rule_id}:{entity_type}:{entity_id}"
+
+
+def automation_event_exists(db: Session, business_id: int, dedupe_key: str) -> bool:
+    return db.query(AutomationEvent).filter_by(business_id=business_id, dedupe_key=dedupe_key).first() is not None
+
+
 def handle_job_created(db: Session, job: Job) -> None:
     if job.status != JobStatus.scheduled:
         return
@@ -112,11 +120,15 @@ def handle_job_created(db: Session, job: Job) -> None:
     )
     if rule is None:
         return
+    dedupe_key = build_dedupe_key(job.business_id, rule.id, "job-created", job.id)
+    if automation_event_exists(db, job.business_id, dedupe_key):
+        return
     db.add(
         AutomationEvent(
             business_id=job.business_id,
             rule_id=rule.id,
             job_id=job.id,
+            dedupe_key=dedupe_key,
             message=render_job_message("Booking confirmation", job),
         )
     )
@@ -130,11 +142,15 @@ def handle_job_completed(db: Session, job: Job) -> None:
     )
     if rule is None:
         return
+    dedupe_key = build_dedupe_key(job.business_id, rule.id, "job-completed", job.id)
+    if automation_event_exists(db, job.business_id, dedupe_key):
+        return
     db.add(
         AutomationEvent(
             business_id=job.business_id,
             rule_id=rule.id,
             job_id=job.id,
+            dedupe_key=dedupe_key,
             message=render_job_message("Review request", job),
         )
     )
@@ -161,18 +177,15 @@ def handle_due_job_reminders(db: Session, business_id: int, now: datetime | None
     )
     events: list[AutomationEvent] = []
     for job in jobs:
+        dedupe_key = build_dedupe_key(business_id, rule.id, "job-reminder", job.id)
         message = render_job_message("Appointment reminder", job)
-        existing = (
-            db.query(AutomationEvent)
-            .filter_by(business_id=business_id, rule_id=rule.id, job_id=job.id, message=message)
-            .first()
-        )
-        if existing is not None:
+        if automation_event_exists(db, business_id, dedupe_key):
             continue
         event = AutomationEvent(
             business_id=business_id,
             rule_id=rule.id,
             job_id=job.id,
+            dedupe_key=dedupe_key,
             message=message,
         )
         db.add(event)
@@ -200,17 +213,14 @@ def handle_overdue_invoice_reminders(db: Session, business_id: int, today: date 
     )
     events: list[AutomationEvent] = []
     for invoice in invoices:
+        dedupe_key = build_dedupe_key(business_id, rule.id, "invoice-overdue", invoice.id)
         message = render_invoice_reminder(invoice)
-        existing = (
-            db.query(AutomationEvent)
-            .filter_by(business_id=business_id, rule_id=rule.id, message=message)
-            .first()
-        )
-        if existing is not None:
+        if automation_event_exists(db, business_id, dedupe_key):
             continue
         event = AutomationEvent(
             business_id=business_id,
             rule_id=rule.id,
+            dedupe_key=dedupe_key,
             message=message,
         )
         db.add(event)
@@ -237,17 +247,14 @@ def handle_pending_quote_followups(db: Session, business_id: int) -> list[Automa
     )
     events: list[AutomationEvent] = []
     for quote in quotes:
+        dedupe_key = build_dedupe_key(business_id, rule.id, "quote-pending", quote.id)
         message = render_quote_followup(quote)
-        existing = (
-            db.query(AutomationEvent)
-            .filter_by(business_id=business_id, rule_id=rule.id, message=message)
-            .first()
-        )
-        if existing is not None:
+        if automation_event_exists(db, business_id, dedupe_key):
             continue
         event = AutomationEvent(
             business_id=business_id,
             rule_id=rule.id,
+            dedupe_key=dedupe_key,
             message=message,
         )
         db.add(event)

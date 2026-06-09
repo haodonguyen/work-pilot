@@ -110,10 +110,10 @@ function AuthScreen(props: { onAuthed: () => void }) {
   const [mode, setMode] = useState<"login" | "register">("register");
   const [error, setError] = useState("");
   const [form, setForm] = useState({
-    business_name: "Sparkle Home Cleaning",
-    name: "Ava Owner",
-    email: "ava@example.com",
-    password: "password123",
+    business_name: "",
+    name: "",
+    email: "",
+    password: "",
   });
 
   async function submit(event: FormEvent) {

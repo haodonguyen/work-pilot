@@ -1,13 +1,20 @@
+import os
 from datetime import date, datetime, timedelta
+from pathlib import Path
+from tempfile import gettempdir
 from uuid import uuid4
+
+os.environ["DATABASE_URL"] = f"sqlite:///{Path(gettempdir()) / f'workpilot-test-{uuid4().hex}.db'}"
 
 from fastapi.testclient import TestClient
 
-from app.core.database import SessionLocal
+from app.core.database import Base, SessionLocal, engine
 from app.core.security import decode_access_token
 from app.main import app
 from app.models import AutomationEvent, User
 from app.worker import run_once
+
+Base.metadata.create_all(bind=engine)
 
 
 client = TestClient(app)
@@ -122,6 +129,20 @@ def test_automation_rule_lifecycle_creates_test_event():
     assert "Generate payment reminder" in event.json()["message"]
 
 
+def test_automation_rule_with_events_cannot_be_deleted():
+    headers = auth_headers()
+    rules = client.get("/automation-rules", headers=headers)
+    assert rules.status_code == 200
+    booking_rule = next(rule for rule in rules.json() if rule["trigger"] == "job.created")
+
+    event = client.post(f"/automation-rules/{booking_rule['id']}/test", headers=headers)
+    assert event.status_code == 200
+
+    deleted = client.delete(f"/automation-rules/{booking_rule['id']}", headers=headers)
+    assert deleted.status_code == 409
+    assert deleted.json()["detail"] == "Automation rule has events and cannot be deleted"
+
+
 def test_disabled_booking_rule_does_not_create_job_event():
     headers = auth_headers()
     rules = client.get("/automation-rules", headers=headers)
@@ -171,6 +192,50 @@ def test_disabled_booking_rule_does_not_create_job_event():
     dashboard = client.get("/dashboard", headers=headers)
     assert dashboard.status_code == 200
     assert dashboard.json()["automation_events"] == 0
+
+
+def test_completing_job_twice_creates_one_review_request_event():
+    headers = auth_headers()
+    customer = client.post(
+        "/customers",
+        headers=headers,
+        json={
+            "name": "Repeat Completion Customer",
+            "email": "repeat@example.com",
+            "phone": "0400 222 333",
+            "address": "33 Review Street, Melbourne VIC",
+            "notes": "",
+        },
+    )
+    assert customer.status_code == 201
+
+    job = client.post(
+        "/jobs",
+        headers=headers,
+        json={
+            "customer_id": customer.json()["id"],
+            "service_type": "End of lease clean",
+            "scheduled_at": "2026-06-04T09:00:00",
+            "price": 420,
+            "status": "scheduled",
+            "staff_member": "Mia",
+            "notes": "",
+        },
+    )
+    assert job.status_code == 201
+    job_id = job.json()["id"]
+
+    completed = client.put(f"/jobs/{job_id}", headers=headers, json={"status": "completed"})
+    assert completed.status_code == 200
+    reopened = client.put(f"/jobs/{job_id}", headers=headers, json={"status": "scheduled"})
+    assert reopened.status_code == 200
+    completed_again = client.put(f"/jobs/{job_id}", headers=headers, json={"status": "completed"})
+    assert completed_again.status_code == 200
+
+    events = client.get("/automation-events", headers=headers)
+    assert events.status_code == 200
+    review_events = [event for event in events.json() if "Review request generated" in event["message"]]
+    assert len(review_events) == 1
 
 
 def test_overdue_invoice_updates_dashboard_metric():

@@ -52,6 +52,7 @@ Useful checks:
 make test
 make build
 make worker-once
+make migrate
 ```
 
 The default local SQLite database is always stored at the project root as `workpilot.db`, regardless of whether commands are launched from the root or `backend/`.
@@ -65,6 +66,7 @@ Backend:
 ```bash
 python3 -m venv backend/.venv
 backend/.venv/bin/pip install -r backend/requirements.txt
+backend/.venv/bin/alembic upgrade head
 backend/.venv/bin/uvicorn app.main:app --app-dir backend --reload --host 127.0.0.1 --port 8000
 ```
 

@@ -43,7 +43,11 @@ def update_rule(rule_id: int, payload: AutomationRuleUpdate, user: User = Depend
 
 @router.delete("/automation-rules/{rule_id}", status_code=204)
 def delete_rule(rule_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    db.delete(find_rule(db, user.business_id, rule_id))
+    rule = find_rule(db, user.business_id, rule_id)
+    event_count = db.query(AutomationEvent).filter_by(business_id=user.business_id, rule_id=rule.id).count()
+    if event_count:
+        raise HTTPException(status_code=409, detail="Automation rule has events and cannot be deleted")
+    db.delete(rule)
     db.commit()
 
 

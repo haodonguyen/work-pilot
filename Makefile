@@ -5,15 +5,20 @@ PYTHON := $(BACKEND_VENV)/bin/python
 PIP := $(BACKEND_VENV)/bin/pip
 PYTEST := $(BACKEND_VENV)/bin/pytest
 UVICORN := $(BACKEND_VENV)/bin/uvicorn
+ALEMBIC := $(BACKEND_VENV)/bin/alembic
 
-.PHONY: setup backend frontend dev test build worker-once clean-db
+.PHONY: setup migrate backend frontend dev test build worker-once clean-db
 
 setup:
 	python3 -m venv $(BACKEND_VENV)
 	$(PIP) install -r backend/requirements.txt
 	cd frontend && npm install
 
+migrate:
+	$(ALEMBIC) upgrade head
+
 backend:
+	$(ALEMBIC) upgrade head
 	$(UVICORN) app.main:app --app-dir backend --host 127.0.0.1 --port 8000 --reload
 
 frontend:

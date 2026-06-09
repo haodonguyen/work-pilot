@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from enum import Enum
 
-from sqlalchemy import Date, DateTime, Enum as SqlEnum, Float, ForeignKey, String, Text
+from sqlalchemy import Date, DateTime, Enum as SqlEnum, Float, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -139,11 +139,13 @@ class AutomationRule(Base):
 
 class AutomationEvent(Base):
     __tablename__ = "automation_events"
+    __table_args__ = (UniqueConstraint("dedupe_key", name="uq_automation_events_dedupe_key"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     business_id: Mapped[int] = mapped_column(ForeignKey("businesses.id"), index=True)
     rule_id: Mapped[int | None] = mapped_column(ForeignKey("automation_rules.id"), nullable=True)
     job_id: Mapped[int | None] = mapped_column(ForeignKey("jobs.id"), nullable=True)
+    dedupe_key: Mapped[str | None] = mapped_column(String(320), nullable=True)
     message: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(80), default="simulated")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
