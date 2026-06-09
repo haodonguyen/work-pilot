@@ -8,6 +8,7 @@ os.environ["DATABASE_URL"] = f"sqlite:///{Path(gettempdir()) / f'workpilot-test-
 
 from fastapi.testclient import TestClient
 
+from app.core.config import settings, validate_production_settings
 from app.core.database import Base, SessionLocal, engine
 from app.core.security import decode_access_token
 from app.main import app
@@ -20,22 +21,29 @@ Base.metadata.create_all(bind=engine)
 client = TestClient(app)
 
 
+def register_payload(email: str | None = None, invite_code: str | None = None):
+    payload = {
+        "business_name": "Sparkle Home Cleaning",
+        "name": "Ava Owner",
+        "email": email or f"ava-{uuid4().hex}@example.com",
+        "password": "password123",
+    }
+    if invite_code is not None:
+        payload["invite_code"] = invite_code
+    return payload
+
+
 def auth_headers():
-    email = f"ava-{uuid4().hex}@example.com"
+    payload = register_payload()
     register = client.post(
         "/auth/register",
-        json={
-            "business_name": "Sparkle Home Cleaning",
-            "name": "Ava Owner",
-            "email": email,
-            "password": "password123",
-        },
+        json=payload,
     )
     assert register.status_code == 201
 
     login = client.post(
         "/auth/login",
-        json={"email": email, "password": "password123"},
+        json={"email": payload["email"], "password": payload["password"]},
     )
     assert login.status_code == 200
     return {"Authorization": f"Bearer {login.json()['access_token']}"}
@@ -47,6 +55,51 @@ def test_register_login_and_me():
     assert response.status_code == 200
     assert response.json()["email"].startswith("ava-")
     assert response.json()["business"]["name"] == "Sparkle Home Cleaning"
+
+
+def test_registration_can_be_disabled():
+    original_allow_signups = settings.allow_signups
+    try:
+        settings.allow_signups = False
+        response = client.post("/auth/register", json=register_payload())
+        assert response.status_code == 403
+        assert response.json()["detail"] == "Signups are disabled"
+    finally:
+        settings.allow_signups = original_allow_signups
+
+
+def test_registration_invite_code_is_required_when_configured():
+    original_invite_code = settings.signup_invite_code
+    try:
+        settings.signup_invite_code = "launch-pass"
+        missing = client.post("/auth/register", json=register_payload())
+        assert missing.status_code == 403
+        assert missing.json()["detail"] == "Invalid signup invite code"
+
+        wrong = client.post("/auth/register", json=register_payload(invite_code="wrong-pass"))
+        assert wrong.status_code == 403
+
+        accepted = client.post("/auth/register", json=register_payload(invite_code="launch-pass"))
+        assert accepted.status_code == 201
+    finally:
+        settings.signup_invite_code = original_invite_code
+
+
+def test_production_config_rejects_default_jwt_secret():
+    original_database_url = settings.database_url
+    original_jwt_secret = settings.jwt_secret
+    try:
+        settings.database_url = "postgresql+psycopg://workpilot@example.com/workpilot"
+        settings.jwt_secret = "change-me-in-production"
+        try:
+            validate_production_settings()
+        except RuntimeError as exc:
+            assert str(exc) == "JWT_SECRET must be set for production deployments"
+        else:
+            raise AssertionError("Expected production settings validation to fail")
+    finally:
+        settings.database_url = original_database_url
+        settings.jwt_secret = original_jwt_secret
 
 
 def test_customer_and_job_create_generate_dashboard_activity():

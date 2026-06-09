@@ -13,6 +13,7 @@ class RegisterIn(BaseModel):
     name: str = Field(min_length=2, max_length=200)
     email: EmailStr
     password: str = Field(min_length=8)
+    invite_code: str | None = None
 
 
 class LoginIn(BaseModel):

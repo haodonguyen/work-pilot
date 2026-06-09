@@ -9,7 +9,7 @@ services:
     name: workpilot-api
     runtime: python
     plan: free
-    buildCommand: pip install -r backend/requirements.txt && alembic upgrade head
+    buildCommand: pip install -r backend/requirements.txt && PYTHONPATH=backend alembic upgrade head
     startCommand: uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
@@ -23,13 +23,17 @@ services:
         value: workpilot-api
       - key: CORS_ORIGINS
         sync: false
+      - key: ALLOW_SIGNUPS
+        value: true
+      - key: SIGNUP_INVITE_CODE
+        sync: false
 
   - type: cron
     name: workpilot-automation-worker
     runtime: python
     plan: free
     schedule: "*/30 * * * *"
-    buildCommand: pip install -r backend/requirements.txt && alembic upgrade head
+    buildCommand: pip install -r backend/requirements.txt && PYTHONPATH=backend alembic upgrade head
     startCommand: PYTHONPATH=backend python -m app.worker
     envVars:
       - key: DATABASE_URL
@@ -40,6 +44,8 @@ services:
         generateValue: true
       - key: JWT_ISSUER
         value: workpilot-api
+      - key: ALLOW_SIGNUPS
+        value: true
 
   - type: web
     name: workpilot-web
@@ -51,4 +57,3 @@ services:
     envVars:
       - key: VITE_API_URL
         sync: false
-

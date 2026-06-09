@@ -2,7 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import ai, auth, automations, customers, dashboard, invoices, jobs, quotes, templates
-from app.core.config import settings
+from app.core.config import settings, validate_production_settings
+
+validate_production_settings()
 
 app = FastAPI(title="WorkPilot API", version="0.1.0")
 

@@ -49,10 +49,27 @@ const EMPTY_RULE: AutomationRuleInput = {
   enabled: true,
 };
 
+function dateInputValue(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 function dateInputDaysFromNow(days: number) {
   const date = new Date();
   date.setDate(date.getDate() + days);
-  return date.toISOString().slice(0, 10);
+  return dateInputValue(date);
+}
+
+function dateTimeInputHoursFromNow(hours: number) {
+  const date = new Date();
+  date.setHours(date.getHours() + hours);
+  date.setMinutes(0, 0, 0);
+  return `${dateInputValue(date)}T${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
+function documentNumber(prefix: string) {
+  const now = new Date();
+  const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}`;
+  return `${prefix}-${stamp}`;
 }
 
 function Field(props: { label: string; children: React.ReactNode }) {
@@ -290,26 +307,30 @@ function AuthScreen(props: { onAuthed: () => void }) {
 }
 
 function CustomerForm(props: { onCreate: () => void }) {
-  const [name, setName] = useState("Sarah Nguyen");
-  const [phone, setPhone] = useState("0400 111 222");
-  const [address, setAddress] = useState("12 Market Street, Richmond VIC");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [email, setEmail] = useState("");
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    await api.createCustomer({ name, phone, address, email: `${name.toLowerCase().replaceAll(" ", ".")}@example.com`, notes: "" });
+    await api.createCustomer({ name, phone, address, email: email || undefined, notes: "" });
     props.onCreate();
   }
 
   return (
     <form className="inlineForm" onSubmit={submit}>
       <Field label="Customer">
-        <input value={name} onChange={(event) => setName(event.target.value)} />
+        <input required value={name} onChange={(event) => setName(event.target.value)} placeholder="Customer name" />
+      </Field>
+      <Field label="Email">
+        <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" />
       </Field>
       <Field label="Phone">
-        <input value={phone} onChange={(event) => setPhone(event.target.value)} />
+        <input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="Phone number" />
       </Field>
       <Field label="Address">
-        <input value={address} onChange={(event) => setAddress(event.target.value)} />
+        <input value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Service address" />
       </Field>
       <button className="iconButton" type="submit" aria-label="Add customer" title="Add customer">
         <Plus size={18} />
@@ -321,9 +342,9 @@ function CustomerForm(props: { onCreate: () => void }) {
 function JobForm(props: { customers: Customer[]; onCreate: () => void }) {
   const firstCustomer = props.customers[0]?.id ?? 0;
   const [customerId, setCustomerId] = useState(firstCustomer);
-  const [serviceType, setServiceType] = useState("Regular clean");
-  const [scheduledAt, setScheduledAt] = useState("2026-06-04T09:00");
-  const [price, setPrice] = useState(180);
+  const [serviceType, setServiceType] = useState("");
+  const [scheduledAt, setScheduledAt] = useState(() => dateTimeInputHoursFromNow(24));
+  const [price, setPrice] = useState(0);
 
   useEffect(() => {
     if (!customerId && firstCustomer) setCustomerId(firstCustomer);
@@ -356,7 +377,7 @@ function JobForm(props: { customers: Customer[]; onCreate: () => void }) {
         </select>
       </Field>
       <Field label="Service">
-        <input value={serviceType} onChange={(event) => setServiceType(event.target.value)} />
+        <input required value={serviceType} onChange={(event) => setServiceType(event.target.value)} placeholder="Service type" />
       </Field>
       <Field label="Date">
         <input type="datetime-local" value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} />
@@ -374,9 +395,9 @@ function JobForm(props: { customers: Customer[]; onCreate: () => void }) {
 function InvoiceForm(props: { customers: Customer[]; onCreate: () => void }) {
   const firstCustomer = props.customers[0]?.id ?? 0;
   const [customerId, setCustomerId] = useState(firstCustomer);
-  const [number, setNumber] = useState("INV-1001");
-  const [amount, setAmount] = useState(890);
-  const [dueDate, setDueDate] = useState("2026-06-01");
+  const [number, setNumber] = useState(() => documentNumber("INV"));
+  const [amount, setAmount] = useState(0);
+  const [dueDate, setDueDate] = useState(() => dateInputDaysFromNow(7));
 
   useEffect(() => {
     if (!customerId && firstCustomer) setCustomerId(firstCustomer);
@@ -408,7 +429,7 @@ function InvoiceForm(props: { customers: Customer[]; onCreate: () => void }) {
         </select>
       </Field>
       <Field label="Invoice">
-        <input value={number} onChange={(event) => setNumber(event.target.value)} />
+        <input required value={number} onChange={(event) => setNumber(event.target.value)} />
       </Field>
       <Field label="Due">
         <input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} />
@@ -426,9 +447,9 @@ function InvoiceForm(props: { customers: Customer[]; onCreate: () => void }) {
 function QuoteForm(props: { customers: Customer[]; onCreate: () => void }) {
   const firstCustomer = props.customers[0]?.id ?? 0;
   const [customerId, setCustomerId] = useState(firstCustomer);
-  const [number, setNumber] = useState("QUO-1001");
-  const [serviceType, setServiceType] = useState("Office deep clean");
-  const [amount, setAmount] = useState(1250);
+  const [number, setNumber] = useState(() => documentNumber("QUO"));
+  const [serviceType, setServiceType] = useState("");
+  const [amount, setAmount] = useState(0);
   const [validUntil, setValidUntil] = useState(() => dateInputDaysFromNow(14));
 
   useEffect(() => {
@@ -462,10 +483,10 @@ function QuoteForm(props: { customers: Customer[]; onCreate: () => void }) {
         </select>
       </Field>
       <Field label="Quote">
-        <input value={number} onChange={(event) => setNumber(event.target.value)} />
+        <input required value={number} onChange={(event) => setNumber(event.target.value)} />
       </Field>
       <Field label="Service">
-        <input value={serviceType} onChange={(event) => setServiceType(event.target.value)} />
+        <input required value={serviceType} onChange={(event) => setServiceType(event.target.value)} placeholder="Service type" />
       </Field>
       <Field label="Valid">
         <input type="date" value={validUntil} onChange={(event) => setValidUntil(event.target.value)} />

@@ -21,6 +21,8 @@ class Settings(BaseModel):
     jwt_secret: str = os.getenv("JWT_SECRET", "change-me-in-production")
     jwt_issuer: str = os.getenv("JWT_ISSUER", "workpilot-api")
     access_token_minutes: int = 60 * 24
+    allow_signups: bool = os.getenv("ALLOW_SIGNUPS", "true").lower() in {"1", "true", "yes", "on"}
+    signup_invite_code: str | None = os.getenv("SIGNUP_INVITE_CODE") or None
     cors_origins: str = os.getenv(
         "CORS_ORIGINS",
         "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174",
@@ -29,6 +31,15 @@ class Settings(BaseModel):
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def is_sqlite(self) -> bool:
+        return self.database_url.startswith("sqlite")
+
+
+def validate_production_settings() -> None:
+    if not settings.is_sqlite and settings.jwt_secret == "change-me-in-production":
+        raise RuntimeError("JWT_SECRET must be set for production deployments")
 
 
 settings = Settings()
