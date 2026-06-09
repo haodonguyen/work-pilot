@@ -6,7 +6,7 @@ PIP := $(BACKEND_VENV)/bin/pip
 PYTEST := $(BACKEND_VENV)/bin/pytest
 UVICORN := $(BACKEND_VENV)/bin/uvicorn
 
-.PHONY: setup backend frontend dev test build clean-db
+.PHONY: setup backend frontend dev test build worker-once clean-db
 
 setup:
 	python3 -m venv $(BACKEND_VENV)
@@ -29,6 +29,9 @@ test:
 
 build:
 	cd frontend && npm run build
+
+worker-once:
+	PYTHONPATH=backend $(PYTHON) -m app.worker
 
 clean-db:
 	rm -f workpilot.db backend/workpilot.db

@@ -1,9 +1,13 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
+from app.core.database import SessionLocal
+from app.core.security import decode_access_token
 from app.main import app
+from app.models import AutomationEvent, User
+from app.worker import run_once
 
 
 client = TestClient(app)
@@ -367,3 +371,121 @@ def test_quote_followup_automation_creates_one_event_per_pending_quote():
     paused_run = client.post("/automation-rules/run-quote-followups", headers=headers)
     assert paused_run.status_code == 200
     assert paused_run.json() == []
+
+
+def test_worker_creates_due_reminders_once_and_respects_disabled_rules():
+    headers = auth_headers()
+    email = decode_access_token(headers["Authorization"].removeprefix("Bearer "))
+    db = SessionLocal()
+    try:
+        business_id = db.query(User).filter_by(email=email).one().business_id
+    finally:
+        db.close()
+
+    customer = client.post(
+        "/customers",
+        headers=headers,
+        json={
+            "name": "Worker Test Customer",
+            "email": "worker@example.com",
+            "phone": "0400 111 333",
+            "address": "90 Test Street, Melbourne VIC",
+            "notes": "",
+        },
+    )
+    assert customer.status_code == 201
+    customer_id = customer.json()["id"]
+
+    job = client.post(
+        "/jobs",
+        headers=headers,
+        json={
+            "customer_id": customer_id,
+            "service_type": "Window clean",
+            "scheduled_at": (datetime.now() + timedelta(hours=20)).isoformat(),
+            "price": 220,
+            "status": "scheduled",
+            "staff_member": "Ava",
+            "notes": "",
+        },
+    )
+    assert job.status_code == 201
+
+    invoice = client.post(
+        "/invoices",
+        headers=headers,
+        json={
+            "customer_id": customer_id,
+            "number": "INV-WORKER",
+            "amount": 330,
+            "due_date": (date.today() - timedelta(days=2)).isoformat(),
+            "status": "sent",
+            "notes": "",
+        },
+    )
+    assert invoice.status_code == 201
+
+    quote = client.post(
+        "/quotes",
+        headers=headers,
+        json={
+            "customer_id": customer_id,
+            "number": "QUO-WORKER",
+            "service_type": "Exterior clean",
+            "amount": 770,
+            "valid_until": (date.today() + timedelta(days=5)).isoformat(),
+            "status": "sent",
+            "notes": "",
+        },
+    )
+    assert quote.status_code == 201
+
+    summary = run_once(business_id=business_id)
+    assert summary["appointment_reminders"] == 1
+    assert summary["invoice_reminders"] == 1
+    assert summary["quote_followups"] == 1
+    assert summary["total_events"] == 3
+
+    duplicate_summary = run_once(business_id=business_id)
+    assert duplicate_summary["total_events"] == 0
+
+    events = client.get("/automation-events", headers=headers)
+    assert events.status_code == 200
+    messages = [event["message"] for event in events.json()]
+    assert any("Appointment reminder generated for Worker Test Customer" in message for message in messages)
+    assert any("Invoice reminder generated for Worker Test Customer: INV-WORKER" in message for message in messages)
+    assert any("Quote follow-up generated for Worker Test Customer: QUO-WORKER" in message for message in messages)
+
+    rules = client.get("/automation-rules", headers=headers)
+    assert rules.status_code == 200
+    invoice_rule = next(rule for rule in rules.json() if rule["trigger"] == "invoice.overdue")
+    disabled = client.put(f"/automation-rules/{invoice_rule['id']}", headers=headers, json={"enabled": False})
+    assert disabled.status_code == 200
+
+    another_invoice = client.post(
+        "/invoices",
+        headers=headers,
+        json={
+            "customer_id": customer_id,
+            "number": "INV-PAUSED",
+            "amount": 120,
+            "due_date": (date.today() - timedelta(days=1)).isoformat(),
+            "status": "sent",
+            "notes": "",
+        },
+    )
+    assert another_invoice.status_code == 201
+
+    paused_summary = run_once(business_id=business_id)
+    assert paused_summary["invoice_reminders"] == 0
+
+    db = SessionLocal()
+    try:
+        paused_event = (
+            db.query(AutomationEvent)
+            .filter(AutomationEvent.message.contains("INV-PAUSED"))
+            .first()
+        )
+        assert paused_event is None
+    finally:
+        db.close()
