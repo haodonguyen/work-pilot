@@ -8,3 +8,8 @@ node_modules/
 dist/
 *.tsbuildinfo
 .env
+
+# Local agent workflow files
+AGENTS.md
+tasks/
+docs/superpowers/
