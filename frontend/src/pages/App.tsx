@@ -37,6 +37,9 @@ import { api, AutomationEvent, AutomationRule, AutomationRuleInput, clearToken, 
 
 type User = { name: string; email: string; business: { name: string } };
 type WorkspaceView = "dashboard" | "automations";
+type JobFilter = "active" | Job["status"];
+type QuoteFilter = "open" | QuoteRecord["status"];
+type InvoiceFilter = "open" | "overdue" | Invoice["status"];
 
 const EMPTY_RULE: AutomationRuleInput = {
   name: "24-hour appointment reminder",
@@ -69,6 +72,59 @@ function Metric(props: { icon: React.ReactNode; label: string; value: number | s
       <strong>{props.value}</strong>
     </div>
   );
+}
+
+function FilterBar<T extends string>(props: { value: T; options: { value: T; label: string; count: number }[]; onChange: (value: T) => void }) {
+  return (
+    <div className="filterBar">
+      {props.options.map((option) => (
+        <button
+          key={option.value}
+          className={props.value === option.value ? "active" : ""}
+          onClick={() => props.onChange(option.value)}
+          type="button"
+        >
+          <span>{option.label}</span>
+          <strong>{option.count}</strong>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function StatusPill(props: { status: string; tone?: "default" | "warning" | "success" | "muted" }) {
+  return <span className={`statusPill ${props.tone ?? "default"}`}>{props.status.replaceAll("_", " ")}</span>;
+}
+
+function EmptyState(props: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="emptyState">
+      <ClipboardList size={24} />
+      <strong>{props.title}</strong>
+      <p>{props.children}</p>
+    </div>
+  );
+}
+
+function matchesSearch(values: Array<string | number | undefined | null>, search: string) {
+  if (!search.trim()) return true;
+  const query = search.trim().toLowerCase();
+  return values.some((value) => String(value ?? "").toLowerCase().includes(query));
+}
+
+function isOverdueInvoice(invoice: Invoice) {
+  return invoice.status === "sent" && new Date(`${invoice.due_date}T00:00:00`) < new Date(new Date().toDateString());
+}
+
+function invoiceDisplayStatus(invoice: Invoice) {
+  return isOverdueInvoice(invoice) ? "overdue" : invoice.status;
+}
+
+function statusTone(status: string): "default" | "warning" | "success" | "muted" {
+  if (["completed", "paid", "accepted"].includes(status)) return "success";
+  if (["overdue", "sent", "scheduled", "confirmed"].includes(status)) return "warning";
+  if (["declined", "void", "cancelled", "draft"].includes(status)) return "muted";
+  return "default";
 }
 
 function FeatureCard(props: { className?: string; icon: React.ReactNode; title: string; children: React.ReactNode }) {
@@ -630,6 +686,10 @@ function Workspace(props: { user: User; onLogout: () => void }) {
   const [rules, setRules] = useState<AutomationRule[]>([]);
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [suggestions, setSuggestions] = useState<{ title: string; reason: string; rule: string }[]>([]);
+  const [workSearch, setWorkSearch] = useState("");
+  const [jobFilter, setJobFilter] = useState<JobFilter>("active");
+  const [quoteFilter, setQuoteFilter] = useState<QuoteFilter>("open");
+  const [invoiceFilter, setInvoiceFilter] = useState<InvoiceFilter>("open");
 
   async function refresh() {
     const [nextDashboard, nextCustomers, nextJobs, nextInvoices, nextQuotes, nextEvents, nextRules, nextTemplates, nextSuggestions] = await Promise.all([
@@ -659,6 +719,63 @@ function Workspace(props: { user: User; onLogout: () => void }) {
   }, []);
 
   const nextJob = useMemo(() => jobs.find((job) => job.status === "scheduled" || job.status === "confirmed"), [jobs]);
+  const visibleCustomers = useMemo(
+    () => customers.filter((customer) => matchesSearch([customer.name, customer.email, customer.phone, customer.address], workSearch)),
+    [customers, workSearch],
+  );
+  const visibleJobs = useMemo(
+    () => jobs.filter((job) => {
+      const statusMatch = jobFilter === "active" ? ["scheduled", "confirmed"].includes(job.status) : job.status === jobFilter;
+      return statusMatch && matchesSearch([job.service_type, job.customer.name, job.price, job.status], workSearch);
+    }),
+    [jobs, jobFilter, workSearch],
+  );
+  const visibleQuotes = useMemo(
+    () => quotes.filter((quote) => {
+      const statusMatch = quoteFilter === "open" ? quote.status === "sent" : quote.status === quoteFilter;
+      return statusMatch && matchesSearch([quote.number, quote.customer.name, quote.service_type, quote.amount, quote.status], workSearch);
+    }),
+    [quotes, quoteFilter, workSearch],
+  );
+  const visibleInvoices = useMemo(
+    () => invoices.filter((invoice) => {
+      const displayStatus = invoiceDisplayStatus(invoice);
+      const statusMatch = invoiceFilter === "open" ? ["sent", "overdue"].includes(displayStatus) : displayStatus === invoiceFilter;
+      return statusMatch && matchesSearch([invoice.number, invoice.customer.name, invoice.amount, displayStatus], workSearch);
+    }),
+    [invoices, invoiceFilter, workSearch],
+  );
+  const jobFilterOptions = useMemo(
+    () => [
+      { value: "active" as const, label: "Active", count: jobs.filter((job) => ["scheduled", "confirmed"].includes(job.status)).length },
+      { value: "scheduled" as const, label: "Scheduled", count: jobs.filter((job) => job.status === "scheduled").length },
+      { value: "confirmed" as const, label: "Confirmed", count: jobs.filter((job) => job.status === "confirmed").length },
+      { value: "completed" as const, label: "Completed", count: jobs.filter((job) => job.status === "completed").length },
+      { value: "cancelled" as const, label: "Cancelled", count: jobs.filter((job) => job.status === "cancelled").length },
+    ],
+    [jobs],
+  );
+  const quoteFilterOptions = useMemo(
+    () => [
+      { value: "open" as const, label: "Open", count: quotes.filter((quote) => quote.status === "sent").length },
+      { value: "draft" as const, label: "Draft", count: quotes.filter((quote) => quote.status === "draft").length },
+      { value: "sent" as const, label: "Sent", count: quotes.filter((quote) => quote.status === "sent").length },
+      { value: "accepted" as const, label: "Accepted", count: quotes.filter((quote) => quote.status === "accepted").length },
+      { value: "declined" as const, label: "Declined", count: quotes.filter((quote) => quote.status === "declined").length },
+    ],
+    [quotes],
+  );
+  const invoiceFilterOptions = useMemo(
+    () => [
+      { value: "open" as const, label: "Open", count: invoices.filter((invoice) => ["sent", "overdue"].includes(invoiceDisplayStatus(invoice))).length },
+      { value: "draft" as const, label: "Draft", count: invoices.filter((invoice) => invoice.status === "draft").length },
+      { value: "sent" as const, label: "Sent", count: invoices.filter((invoice) => invoice.status === "sent" && !isOverdueInvoice(invoice)).length },
+      { value: "overdue" as const, label: "Overdue", count: invoices.filter(isOverdueInvoice).length },
+      { value: "paid" as const, label: "Paid", count: invoices.filter((invoice) => invoice.status === "paid").length },
+      { value: "void" as const, label: "Void", count: invoices.filter((invoice) => invoice.status === "void").length },
+    ],
+    [invoices],
+  );
 
   async function completeJob(job: Job) {
     await api.completeJob(job);
@@ -719,47 +836,66 @@ function Workspace(props: { user: User; onLogout: () => void }) {
           <Metric icon={<Clock3 size={20} />} label="Admin Time Saved" value={`${dashboard?.estimated_admin_minutes_saved ?? 0}m`} />
         </section>
 
+        <section className="workQueueToolbar">
+          <div>
+            <h2>Work Queue</h2>
+            <p>Scan current work, filter by status, and act on the next customer touchpoint.</p>
+          </div>
+          <label className="searchField">
+            <Search size={18} />
+            <input
+              value={workSearch}
+              onChange={(event) => setWorkSearch(event.target.value)}
+              placeholder="Search customers, jobs, quotes, invoices"
+            />
+          </label>
+        </section>
+
         <section className="grid two">
           <div className="panel" id="customers">
             <div className="panelHeader">
               <h2>Customers</h2>
-              <span>{customers.length}</span>
+              <span>{visibleCustomers.length}/{customers.length}</span>
             </div>
             <CustomerForm onCreate={refresh} />
             <div className="list">
-              {customers.map((customer) => (
+              {visibleCustomers.map((customer) => (
                 <article key={customer.id} className="rowItem">
                   <strong>{customer.name}</strong>
                   <span>{customer.phone}</span>
                   <small>{customer.address}</small>
                 </article>
               ))}
+              {!visibleCustomers.length && <EmptyState title="No customers match">Try a different search or add a customer.</EmptyState>}
             </div>
           </div>
 
           <div className="panel" id="jobs">
             <div className="panelHeader">
               <h2>Jobs</h2>
-              <span>{jobs.length}</span>
+              <span>{visibleJobs.length}/{jobs.length}</span>
             </div>
             <JobForm customers={customers} onCreate={refresh} />
+            <FilterBar value={jobFilter} options={jobFilterOptions} onChange={setJobFilter} />
             <div className="list">
-              {jobs.map((job) => (
+              {visibleJobs.map((job) => (
                 <article key={job.id} className="rowItem split">
                   <div>
                     <strong>{job.service_type}</strong>
                     <span>{job.customer.name} · ${job.price}</span>
                     <small>{new Date(job.scheduled_at).toLocaleString()}</small>
                   </div>
-                  {job.status !== "completed" ? (
-                    <button className="iconButton" onClick={() => completeJob(job)} aria-label="Mark completed" title="Mark completed">
-                      <CheckCircle2 size={18} />
-                    </button>
-                  ) : (
-                    <span className="statusPill">Completed</span>
-                  )}
+                  <div className="rowActions">
+                    <StatusPill status={job.status} tone={statusTone(job.status)} />
+                    {["scheduled", "confirmed"].includes(job.status) && (
+                      <button className="iconButton" onClick={() => completeJob(job)} aria-label="Mark completed" title="Mark completed">
+                        <CheckCircle2 size={18} />
+                      </button>
+                    )}
+                  </div>
                 </article>
               ))}
+              {!visibleJobs.length && <EmptyState title="No jobs in this view">Change the status filter or create a job.</EmptyState>}
             </div>
           </div>
         </section>
@@ -767,57 +903,66 @@ function Workspace(props: { user: User; onLogout: () => void }) {
         <section className="panel" id="quotes">
           <div className="panelHeader">
             <h2>Quotes</h2>
-            <span>{quotes.length}</span>
+            <span>{visibleQuotes.length}/{quotes.length}</span>
           </div>
           <QuoteForm customers={customers} onCreate={refresh} />
+          <FilterBar value={quoteFilter} options={quoteFilterOptions} onChange={setQuoteFilter} />
           <div className="list">
-            {quotes.map((quote) => (
+            {visibleQuotes.map((quote) => (
               <article key={quote.id} className="rowItem split">
                 <div>
                   <strong>{quote.number}</strong>
                   <span>{quote.customer.name} · {quote.service_type} · ${quote.amount}</span>
                   <small>Valid until {new Date(`${quote.valid_until}T00:00:00`).toLocaleDateString()}</small>
                 </div>
-                {quote.status === "sent" ? (
-                  <div className="rowActions">
-                    <button className="iconButton" onClick={() => acceptQuote(quote)} aria-label="Accept quote" title="Accept quote">
-                      <CheckCircle2 size={18} />
-                    </button>
-                    <button className="iconButton" onClick={() => declineQuote(quote)} aria-label="Decline quote" title="Decline quote">
-                      <XCircle size={18} />
-                    </button>
-                  </div>
-                ) : (
-                  <span className="statusPill">{quote.status}</span>
-                )}
+                <div className="rowActions">
+                  <StatusPill status={quote.status} tone={statusTone(quote.status)} />
+                  {quote.status === "sent" && (
+                    <>
+                      <button className="iconButton" onClick={() => acceptQuote(quote)} aria-label="Accept quote" title="Accept quote">
+                        <CheckCircle2 size={18} />
+                      </button>
+                      <button className="iconButton" onClick={() => declineQuote(quote)} aria-label="Decline quote" title="Decline quote">
+                        <XCircle size={18} />
+                      </button>
+                    </>
+                  )}
+                </div>
               </article>
             ))}
+            {!visibleQuotes.length && <EmptyState title="No quotes in this view">Change the status filter or create a quote.</EmptyState>}
           </div>
         </section>
 
         <section className="panel" id="invoices">
           <div className="panelHeader">
             <h2>Invoices</h2>
-            <span>{invoices.length}</span>
+            <span>{visibleInvoices.length}/{invoices.length}</span>
           </div>
           <InvoiceForm customers={customers} onCreate={refresh} />
+          <FilterBar value={invoiceFilter} options={invoiceFilterOptions} onChange={setInvoiceFilter} />
           <div className="list">
-            {invoices.map((invoice) => (
-              <article key={invoice.id} className="rowItem split">
-                <div>
-                  <strong>{invoice.number}</strong>
-                  <span>{invoice.customer.name} · ${invoice.amount}</span>
-                  <small>Due {new Date(`${invoice.due_date}T00:00:00`).toLocaleDateString()}</small>
-                </div>
-                {invoice.status !== "paid" ? (
-                  <button className="iconButton" onClick={() => markInvoicePaid(invoice)} aria-label="Mark invoice paid" title="Mark invoice paid">
-                    <FileText size={18} />
-                  </button>
-                ) : (
-                  <span className="statusPill">Paid</span>
-                )}
-              </article>
-            ))}
+            {visibleInvoices.map((invoice) => {
+              const displayStatus = invoiceDisplayStatus(invoice);
+              return (
+                <article key={invoice.id} className="rowItem split">
+                  <div>
+                    <strong>{invoice.number}</strong>
+                    <span>{invoice.customer.name} · ${invoice.amount}</span>
+                    <small>Due {new Date(`${invoice.due_date}T00:00:00`).toLocaleDateString()}</small>
+                  </div>
+                  <div className="rowActions">
+                    <StatusPill status={displayStatus} tone={statusTone(displayStatus)} />
+                    {invoice.status !== "paid" && invoice.status !== "void" && (
+                      <button className="iconButton" onClick={() => markInvoicePaid(invoice)} aria-label="Mark invoice paid" title="Mark invoice paid">
+                        <FileText size={18} />
+                      </button>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+            {!visibleInvoices.length && <EmptyState title="No invoices in this view">Change the status filter or create an invoice.</EmptyState>}
           </div>
         </section>
 

@@ -766,6 +766,82 @@ select {
   font-size: 2rem;
 }
 
+.workQueueToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border: 1px solid var(--outline);
+  border-radius: 8px;
+  padding: 18px;
+  background: white;
+}
+
+.workQueueToolbar h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.workQueueToolbar p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.searchField {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: min(420px, 100%);
+  border: 1px solid var(--outline);
+  border-radius: 8px;
+  padding: 0 12px;
+  background: var(--surface-low);
+  color: var(--muted);
+}
+
+.searchField input {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filterBar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  border: 1px solid var(--outline);
+  border-radius: 999px;
+  padding: 0 10px;
+  background: white;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.filterBar button.active {
+  border-color: var(--primary);
+  background: var(--primary-container);
+  color: #001848;
+}
+
+.filterBar strong {
+  display: grid;
+  min-width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--surface-high);
+  color: var(--text);
+  font-size: 0.72rem;
+}
+
 .panel {
   display: grid;
   align-content: start;
@@ -797,6 +873,28 @@ select {
   font-weight: 800;
 }
 
+.statusPill {
+  display: inline-flex;
+  width: fit-content;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.statusPill.warning {
+  background: #fff0c2;
+  color: #5e4200;
+}
+
+.statusPill.success {
+  background: #d9f6df;
+  color: #0d4a1f;
+}
+
+.statusPill.muted {
+  background: #eceef8;
+  color: #4f5363;
+}
+
 .inlineForm {
   display: grid;
   grid-template-columns: repeat(3, minmax(110px, 1fr)) 42px;
@@ -810,6 +908,10 @@ select {
 
 #quotes .inlineForm {
   grid-template-columns: repeat(5, minmax(92px, 1fr)) 42px;
+}
+
+#invoices .inlineForm {
+  grid-template-columns: repeat(4, minmax(100px, 1fr)) 42px;
 }
 
 .list {
@@ -836,7 +938,30 @@ select {
 
 .rowActions {
   display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+.emptyState {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  border: 1px dashed var(--outline);
+  border-radius: 8px;
+  padding: 24px;
+  background: var(--surface-low);
+  color: var(--muted);
+  text-align: center;
+}
+
+.emptyState strong {
+  color: var(--text);
+}
+
+.emptyState p {
+  margin: 0;
 }
 
 .rowItem small,
@@ -1156,8 +1281,19 @@ select {
   }
 
   .inlineForm,
-  #jobs .inlineForm {
+  #jobs .inlineForm,
+  #quotes .inlineForm,
+  #invoices .inlineForm {
     grid-template-columns: repeat(2, minmax(0, 1fr)) 42px;
+  }
+
+  .workQueueToolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .searchField {
+    min-width: 0;
   }
 }
 
@@ -1241,8 +1377,18 @@ select {
   .templateGrid,
   .builderLayout,
   .inlineForm,
-  #jobs .inlineForm {
+  #jobs .inlineForm,
+  #quotes .inlineForm,
+  #invoices .inlineForm {
     grid-template-columns: 1fr;
+  }
+
+  .rowItem.split {
+    grid-template-columns: 1fr;
+  }
+
+  .rowActions {
+    justify-content: stretch;
   }
 
   .builderHeader,

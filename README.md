@@ -133,8 +133,12 @@ make worker-once
 - `GET /auth/me`
 - `GET/POST /customers`
 - `GET/POST /jobs`
+- `POST /jobs/{job_id}/complete`
 - `GET/POST /quotes`
+- `POST /quotes/{quote_id}/accept`
+- `POST /quotes/{quote_id}/decline`
 - `GET/POST /invoices`
+- `POST /invoices/{invoice_id}/mark-paid`
 - `GET /dashboard`
 - `GET /automation-rules`
 - `POST /automation-rules/run-quote-followups`

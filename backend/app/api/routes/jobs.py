@@ -59,6 +59,17 @@ def update_job(job_id: int, payload: JobUpdate, user: User = Depends(current_use
     return find_job(db, user.business_id, job.id)
 
 
+@router.post("/{job_id}/complete", response_model=JobOut)
+def complete_job(job_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    job = find_job(db, user.business_id, job_id)
+    old_status = job.status
+    job.status = JobStatus.completed
+    if old_status != JobStatus.completed:
+        handle_job_completed(db, job)
+    db.commit()
+    return find_job(db, user.business_id, job.id)
+
+
 @router.delete("/{job_id}", status_code=204)
 def delete_job(job_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
     db.delete(find_job(db, user.business_id, job_id))

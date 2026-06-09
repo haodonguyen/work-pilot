@@ -125,19 +125,19 @@ export const api = {
   createJob: (body: Omit<Job, "id" | "customer">) =>
     request<Job>("/jobs", { method: "POST", body: JSON.stringify(body) }),
   completeJob: (job: Job) =>
-    request<Job>(`/jobs/${job.id}`, { method: "PUT", body: JSON.stringify({ status: "completed" }) }),
+    request<Job>(`/jobs/${job.id}/complete`, { method: "POST" }),
   invoices: () => request<Invoice[]>("/invoices"),
   createInvoice: (body: Omit<Invoice, "id" | "customer">) =>
     request<Invoice>("/invoices", { method: "POST", body: JSON.stringify(body) }),
   markInvoicePaid: (invoice: Invoice) =>
-    request<Invoice>(`/invoices/${invoice.id}`, { method: "PUT", body: JSON.stringify({ status: "paid" }) }),
+    request<Invoice>(`/invoices/${invoice.id}/mark-paid`, { method: "POST" }),
   quotes: () => request<QuoteRecord[]>("/quotes"),
   createQuote: (body: Omit<QuoteRecord, "id" | "customer">) =>
     request<QuoteRecord>("/quotes", { method: "POST", body: JSON.stringify(body) }),
   acceptQuote: (quote: QuoteRecord) =>
-    request<QuoteRecord>(`/quotes/${quote.id}`, { method: "PUT", body: JSON.stringify({ status: "accepted" }) }),
+    request<QuoteRecord>(`/quotes/${quote.id}/accept`, { method: "POST" }),
   declineQuote: (quote: QuoteRecord) =>
-    request<QuoteRecord>(`/quotes/${quote.id}`, { method: "PUT", body: JSON.stringify({ status: "declined" }) }),
+    request<QuoteRecord>(`/quotes/${quote.id}/decline`, { method: "POST" }),
   events: () => request<AutomationEvent[]>("/automation-events"),
   rules: () => request<AutomationRule[]>("/automation-rules"),
   createRule: (body: AutomationRuleInput) =>

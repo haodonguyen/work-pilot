@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.api.deps import current_user
 from app.api.routes.customers import find_customer
 from app.core.database import get_db
-from app.models import Quote, User
+from app.models import Quote, QuoteStatus, User
 from app.schemas.quote import QuoteCreate, QuoteOut, QuoteUpdate
 
 router = APIRouter(prefix="/quotes", tags=["quotes"])
@@ -54,6 +54,22 @@ def update_quote(quote_id: int, payload: QuoteUpdate, user: User = Depends(curre
         find_customer(db, user.business_id, payload.customer_id)
     for key, value in payload.model_dump(exclude_unset=True).items():
         setattr(quote, key, value)
+    db.commit()
+    return find_quote(db, user.business_id, quote.id)
+
+
+@router.post("/{quote_id}/accept", response_model=QuoteOut)
+def accept_quote(quote_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    quote = find_quote(db, user.business_id, quote_id)
+    quote.status = QuoteStatus.accepted
+    db.commit()
+    return find_quote(db, user.business_id, quote.id)
+
+
+@router.post("/{quote_id}/decline", response_model=QuoteOut)
+def decline_quote(quote_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    quote = find_quote(db, user.business_id, quote_id)
+    quote.status = QuoteStatus.declined
     db.commit()
     return find_quote(db, user.business_id, quote.id)
 

@@ -238,6 +238,94 @@ def test_completing_job_twice_creates_one_review_request_event():
     assert len(review_events) == 1
 
 
+def test_explicit_status_action_endpoints_update_work_items():
+    headers = auth_headers()
+    customer = client.post(
+        "/customers",
+        headers=headers,
+        json={
+            "name": "Action Endpoint Customer",
+            "email": "actions@example.com",
+            "phone": "0400 222 444",
+            "address": "44 Action Street, Melbourne VIC",
+            "notes": "",
+        },
+    )
+    assert customer.status_code == 201
+    customer_id = customer.json()["id"]
+
+    job = client.post(
+        "/jobs",
+        headers=headers,
+        json={
+            "customer_id": customer_id,
+            "service_type": "Garden tidy",
+            "scheduled_at": "2026-06-04T09:00:00",
+            "price": 180,
+            "status": "scheduled",
+            "staff_member": "Mia",
+            "notes": "",
+        },
+    )
+    assert job.status_code == 201
+    completed = client.post(f"/jobs/{job.json()['id']}/complete", headers=headers)
+    assert completed.status_code == 200
+    assert completed.json()["status"] == "completed"
+
+    invoice = client.post(
+        "/invoices",
+        headers=headers,
+        json={
+            "customer_id": customer_id,
+            "number": "INV-ACTION",
+            "amount": 240,
+            "due_date": (date.today() - timedelta(days=1)).isoformat(),
+            "status": "sent",
+            "notes": "",
+        },
+    )
+    assert invoice.status_code == 201
+    paid = client.post(f"/invoices/{invoice.json()['id']}/mark-paid", headers=headers)
+    assert paid.status_code == 200
+    assert paid.json()["status"] == "paid"
+
+    quote = client.post(
+        "/quotes",
+        headers=headers,
+        json={
+            "customer_id": customer_id,
+            "number": "QUO-ACTION",
+            "service_type": "Garden care plan",
+            "amount": 620,
+            "valid_until": (date.today() + timedelta(days=7)).isoformat(),
+            "status": "sent",
+            "notes": "",
+        },
+    )
+    assert quote.status_code == 201
+    accepted = client.post(f"/quotes/{quote.json()['id']}/accept", headers=headers)
+    assert accepted.status_code == 200
+    assert accepted.json()["status"] == "accepted"
+
+    declined_quote = client.post(
+        "/quotes",
+        headers=headers,
+        json={
+            "customer_id": customer_id,
+            "number": "QUO-DECLINE-ACTION",
+            "service_type": "Hedge trim",
+            "amount": 280,
+            "valid_until": (date.today() + timedelta(days=7)).isoformat(),
+            "status": "sent",
+            "notes": "",
+        },
+    )
+    assert declined_quote.status_code == 201
+    declined = client.post(f"/quotes/{declined_quote.json()['id']}/decline", headers=headers)
+    assert declined.status_code == 200
+    assert declined.json()["status"] == "declined"
+
+
 def test_overdue_invoice_updates_dashboard_metric():
     headers = auth_headers()
     customer = client.post(

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.api.deps import current_user
 from app.api.routes.customers import find_customer
 from app.core.database import get_db
-from app.models import Invoice, User
+from app.models import Invoice, InvoiceStatus, User
 from app.schemas.invoice import InvoiceCreate, InvoiceOut, InvoiceUpdate
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
@@ -54,6 +54,14 @@ def update_invoice(invoice_id: int, payload: InvoiceUpdate, user: User = Depends
         find_customer(db, user.business_id, payload.customer_id)
     for key, value in payload.model_dump(exclude_unset=True).items():
         setattr(invoice, key, value)
+    db.commit()
+    return find_invoice(db, user.business_id, invoice.id)
+
+
+@router.post("/{invoice_id}/mark-paid", response_model=InvoiceOut)
+def mark_invoice_paid(invoice_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    invoice = find_invoice(db, user.business_id, invoice_id)
+    invoice.status = InvoiceStatus.paid
     db.commit()
     return find_invoice(db, user.business_id, invoice.id)
 
