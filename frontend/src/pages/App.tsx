@@ -394,8 +394,8 @@ function CustomerForm(props: { onCreate: () => void | Promise<void> }) {
   );
 }
 
-function JobForm(props: { customers: Customer[]; onCreate: () => void | Promise<void> }) {
-  const firstCustomer = props.customers[0]?.id ?? 0;
+function JobForm(props: { customers: Customer[]; fixedCustomerId?: number; onCreate: () => void | Promise<void> }) {
+  const firstCustomer = props.fixedCustomerId ?? props.customers[0]?.id ?? 0;
   const [customerId, setCustomerId] = useState(firstCustomer);
   const [serviceType, setServiceType] = useState("");
   const [scheduledAt, setScheduledAt] = useState(() => dateTimeInputHoursFromNow(24));
@@ -403,8 +403,9 @@ function JobForm(props: { customers: Customer[]; onCreate: () => void | Promise<
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
+    if (firstCustomer && customerId !== firstCustomer && props.fixedCustomerId) setCustomerId(firstCustomer);
     if (!customerId && firstCustomer) setCustomerId(firstCustomer);
-  }, [customerId, firstCustomer]);
+  }, [customerId, firstCustomer, props.fixedCustomerId]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -431,15 +432,17 @@ function JobForm(props: { customers: Customer[]; onCreate: () => void | Promise<
 
   return (
     <form className="inlineForm" onSubmit={submit}>
-      <Field label="Customer">
-        <select value={customerId} onChange={(event) => setCustomerId(Number(event.target.value))}>
-          {props.customers.map((customer) => (
-            <option key={customer.id} value={customer.id}>
-              {customer.name}
-            </option>
-          ))}
-        </select>
-      </Field>
+      {!props.fixedCustomerId && (
+        <Field label="Customer">
+          <select value={customerId} onChange={(event) => setCustomerId(Number(event.target.value))}>
+            {props.customers.map((customer) => (
+              <option key={customer.id} value={customer.id}>
+                {customer.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
       <Field label="Service">
         <input required value={serviceType} onChange={(event) => setServiceType(event.target.value)} placeholder="Service type" />
       </Field>
@@ -456,8 +459,8 @@ function JobForm(props: { customers: Customer[]; onCreate: () => void | Promise<
   );
 }
 
-function InvoiceForm(props: { customers: Customer[]; onCreate: () => void | Promise<void> }) {
-  const firstCustomer = props.customers[0]?.id ?? 0;
+function InvoiceForm(props: { customers: Customer[]; fixedCustomerId?: number; onCreate: () => void | Promise<void> }) {
+  const firstCustomer = props.fixedCustomerId ?? props.customers[0]?.id ?? 0;
   const [customerId, setCustomerId] = useState(firstCustomer);
   const [number, setNumber] = useState(() => documentNumber("INV"));
   const [amount, setAmount] = useState(0);
@@ -465,8 +468,9 @@ function InvoiceForm(props: { customers: Customer[]; onCreate: () => void | Prom
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
+    if (firstCustomer && customerId !== firstCustomer && props.fixedCustomerId) setCustomerId(firstCustomer);
     if (!customerId && firstCustomer) setCustomerId(firstCustomer);
-  }, [customerId, firstCustomer]);
+  }, [customerId, firstCustomer, props.fixedCustomerId]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -492,15 +496,17 @@ function InvoiceForm(props: { customers: Customer[]; onCreate: () => void | Prom
 
   return (
     <form className="inlineForm" onSubmit={submit}>
-      <Field label="Customer">
-        <select value={customerId} onChange={(event) => setCustomerId(Number(event.target.value))}>
-          {props.customers.map((customer) => (
-            <option key={customer.id} value={customer.id}>
-              {customer.name}
-            </option>
-          ))}
-        </select>
-      </Field>
+      {!props.fixedCustomerId && (
+        <Field label="Customer">
+          <select value={customerId} onChange={(event) => setCustomerId(Number(event.target.value))}>
+            {props.customers.map((customer) => (
+              <option key={customer.id} value={customer.id}>
+                {customer.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
       <Field label="Invoice">
         <input required value={number} onChange={(event) => setNumber(event.target.value)} />
       </Field>
@@ -517,8 +523,8 @@ function InvoiceForm(props: { customers: Customer[]; onCreate: () => void | Prom
   );
 }
 
-function QuoteForm(props: { customers: Customer[]; onCreate: () => void | Promise<void> }) {
-  const firstCustomer = props.customers[0]?.id ?? 0;
+function QuoteForm(props: { customers: Customer[]; fixedCustomerId?: number; onCreate: () => void | Promise<void> }) {
+  const firstCustomer = props.fixedCustomerId ?? props.customers[0]?.id ?? 0;
   const [customerId, setCustomerId] = useState(firstCustomer);
   const [number, setNumber] = useState(() => documentNumber("QUO"));
   const [serviceType, setServiceType] = useState("");
@@ -527,8 +533,9 @@ function QuoteForm(props: { customers: Customer[]; onCreate: () => void | Promis
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
+    if (firstCustomer && customerId !== firstCustomer && props.fixedCustomerId) setCustomerId(firstCustomer);
     if (!customerId && firstCustomer) setCustomerId(firstCustomer);
-  }, [customerId, firstCustomer]);
+  }, [customerId, firstCustomer, props.fixedCustomerId]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -556,15 +563,17 @@ function QuoteForm(props: { customers: Customer[]; onCreate: () => void | Promis
 
   return (
     <form className="inlineForm" onSubmit={submit}>
-      <Field label="Customer">
-        <select value={customerId} onChange={(event) => setCustomerId(Number(event.target.value))}>
-          {props.customers.map((customer) => (
-            <option key={customer.id} value={customer.id}>
-              {customer.name}
-            </option>
-          ))}
-        </select>
-      </Field>
+      {!props.fixedCustomerId && (
+        <Field label="Customer">
+          <select value={customerId} onChange={(event) => setCustomerId(Number(event.target.value))}>
+            {props.customers.map((customer) => (
+              <option key={customer.id} value={customer.id}>
+                {customer.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
       <Field label="Quote">
         <input required value={number} onChange={(event) => setNumber(event.target.value)} />
       </Field>
@@ -581,6 +590,156 @@ function QuoteForm(props: { customers: Customer[]; onCreate: () => void | Promis
         <Plus size={18} />
       </button>
     </form>
+  );
+}
+
+function CustomerDetail(props: {
+  customer: Customer;
+  jobs: Job[];
+  quotes: QuoteRecord[];
+  invoices: Invoice[];
+  events: AutomationEvent[];
+  onRefresh: () => Promise<void>;
+}) {
+  const [notes, setNotes] = useState(props.customer.notes ?? "");
+  const [isSaving, setIsSaving] = useState(false);
+  const [status, setStatus] = useState("");
+  const relatedJobIds = useMemo(() => new Set(props.jobs.map((job) => job.id)), [props.jobs]);
+  const relatedEvents = useMemo(
+    () => props.events.filter((event) => event.job_id !== null && relatedJobIds.has(event.job_id)),
+    [props.events, relatedJobIds],
+  );
+  const openQuotes = props.quotes.filter((quote) => quote.status === "sent").length;
+  const overdueInvoices = props.invoices.filter(isOverdueInvoice).length;
+
+  useEffect(() => {
+    setNotes(props.customer.notes ?? "");
+    setStatus("");
+  }, [props.customer.id, props.customer.notes]);
+
+  async function saveNotes() {
+    setIsSaving(true);
+    setStatus("");
+    try {
+      await api.updateCustomer(props.customer.id, { notes });
+      await props.onRefresh();
+      setStatus("Notes saved.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <section className="customerDetail panel" id="customer-detail">
+      <div className="customerHero">
+        <div>
+          <span className="eyebrow">Customer profile</span>
+          <h2>{props.customer.name}</h2>
+          <p>{props.customer.address || "No service address yet"}</p>
+        </div>
+        <div className="customerContact">
+          <span>{props.customer.email || "No email"}</span>
+          <span>{props.customer.phone || "No phone"}</span>
+        </div>
+      </div>
+
+      <div className="customerStats">
+        <Metric icon={<BriefcaseBusiness size={20} />} label="Jobs" value={props.jobs.length} />
+        <Metric icon={<Quote size={20} />} label="Open Quotes" value={openQuotes} />
+        <Metric icon={<Wallet size={20} />} label="Overdue Invoices" value={overdueInvoices} />
+        <Metric icon={<History size={20} />} label="Activity" value={relatedEvents.length} />
+      </div>
+
+      <div className="customerDetailGrid">
+        <div className="detailColumn">
+          <div className="panelHeader"><h3>Quick actions</h3><span>{props.customer.name}</span></div>
+          <div className="quickForms">
+            <JobForm customers={[props.customer]} fixedCustomerId={props.customer.id} onCreate={props.onRefresh} />
+            <QuoteForm customers={[props.customer]} fixedCustomerId={props.customer.id} onCreate={props.onRefresh} />
+            <InvoiceForm customers={[props.customer]} fixedCustomerId={props.customer.id} onCreate={props.onRefresh} />
+          </div>
+        </div>
+
+        <div className="detailColumn">
+          <div className="panelHeader"><h3>Notes</h3><span>{status || "Private"}</span></div>
+          <textarea
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+            placeholder="Add service preferences, access notes, or follow-up context."
+          />
+          <button className="primaryButton compact" onClick={saveNotes} disabled={isSaving}>
+            <CheckCircle2 size={17} /> {isSaving ? "Saving..." : "Save notes"}
+          </button>
+        </div>
+      </div>
+
+      <div className="customerTimeline">
+        <div className="detailColumn">
+          <div className="panelHeader"><h3>Jobs</h3><span>{props.jobs.length}</span></div>
+          <div className="list compactList">
+            {props.jobs.map((job) => (
+              <article key={job.id} className="rowItem split">
+                <div>
+                  <strong>{job.service_type}</strong>
+                  <span>${job.price} - {new Date(job.scheduled_at).toLocaleDateString()}</span>
+                </div>
+                <StatusPill status={job.status} tone={statusTone(job.status)} />
+              </article>
+            ))}
+            {!props.jobs.length && <EmptyState title="No jobs yet">Create the first job from quick actions.</EmptyState>}
+          </div>
+        </div>
+
+        <div className="detailColumn">
+          <div className="panelHeader"><h3>Quotes</h3><span>{props.quotes.length}</span></div>
+          <div className="list compactList">
+            {props.quotes.map((quote) => (
+              <article key={quote.id} className="rowItem split">
+                <div>
+                  <strong>{quote.number}</strong>
+                  <span>{quote.service_type} - ${quote.amount}</span>
+                </div>
+                <StatusPill status={quote.status} tone={statusTone(quote.status)} />
+              </article>
+            ))}
+            {!props.quotes.length && <EmptyState title="No quotes yet">Create a quote when this customer asks for pricing.</EmptyState>}
+          </div>
+        </div>
+
+        <div className="detailColumn">
+          <div className="panelHeader"><h3>Invoices</h3><span>{props.invoices.length}</span></div>
+          <div className="list compactList">
+            {props.invoices.map((invoice) => {
+              const displayStatus = invoiceDisplayStatus(invoice);
+              return (
+                <article key={invoice.id} className="rowItem split">
+                  <div>
+                    <strong>{invoice.number}</strong>
+                    <span>${invoice.amount} - due {new Date(`${invoice.due_date}T00:00:00`).toLocaleDateString()}</span>
+                  </div>
+                  <StatusPill status={displayStatus} tone={statusTone(displayStatus)} />
+                </article>
+              );
+            })}
+            {!props.invoices.length && <EmptyState title="No invoices yet">Create an invoice when work is ready to bill.</EmptyState>}
+          </div>
+        </div>
+
+        <div className="detailColumn">
+          <div className="panelHeader"><h3>Automation activity</h3><span>{relatedEvents.length}</span></div>
+          <div className="list compactList">
+            {relatedEvents.map((event) => (
+              <article key={event.id} className="rowItem">
+                <strong>{event.status}</strong>
+                <span>{event.message}</span>
+                <small>{new Date(event.created_at).toLocaleString()}</small>
+              </article>
+            ))}
+            {!relatedEvents.length && <EmptyState title="No activity yet">Automation events linked to this customer's jobs will appear here.</EmptyState>}
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -794,6 +953,7 @@ function Workspace(props: { user: User; onLogout: () => void }) {
   const [jobFilter, setJobFilter] = useState<JobFilter>("active");
   const [quoteFilter, setQuoteFilter] = useState<QuoteFilter>("open");
   const [invoiceFilter, setInvoiceFilter] = useState<InvoiceFilter>("open");
+  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
 
   async function refresh() {
     const [nextDashboard, nextCustomers, nextJobs, nextInvoices, nextQuotes, nextEvents, nextRules, nextTemplates, nextSuggestions] = await Promise.all([
@@ -822,6 +982,16 @@ function Workspace(props: { user: User; onLogout: () => void }) {
     refresh();
   }, []);
 
+  useEffect(() => {
+    if (!customers.length) {
+      setSelectedCustomerId(null);
+      return;
+    }
+    if (!selectedCustomerId || !customers.some((customer) => customer.id === selectedCustomerId)) {
+      setSelectedCustomerId(customers[0].id);
+    }
+  }, [customers, selectedCustomerId]);
+
   const nextJob = useMemo(() => jobs.find((job) => job.status === "scheduled" || job.status === "confirmed"), [jobs]);
   const visibleCustomers = useMemo(
     () => customers.filter((customer) => matchesSearch([customer.name, customer.email, customer.phone, customer.address], workSearch)),
@@ -848,6 +1018,22 @@ function Workspace(props: { user: User; onLogout: () => void }) {
       return statusMatch && matchesSearch([invoice.number, invoice.customer.name, invoice.amount, displayStatus], workSearch);
     }),
     [invoices, invoiceFilter, workSearch],
+  );
+  const selectedCustomer = useMemo(
+    () => customers.find((customer) => customer.id === selectedCustomerId) ?? null,
+    [customers, selectedCustomerId],
+  );
+  const selectedCustomerJobs = useMemo(
+    () => selectedCustomer ? jobs.filter((job) => job.customer_id === selectedCustomer.id) : [],
+    [jobs, selectedCustomer],
+  );
+  const selectedCustomerQuotes = useMemo(
+    () => selectedCustomer ? quotes.filter((quote) => quote.customer_id === selectedCustomer.id) : [],
+    [quotes, selectedCustomer],
+  );
+  const selectedCustomerInvoices = useMemo(
+    () => selectedCustomer ? invoices.filter((invoice) => invoice.customer_id === selectedCustomer.id) : [],
+    [invoices, selectedCustomer],
   );
   const jobFilterOptions = useMemo(
     () => [
@@ -992,10 +1178,23 @@ function Workspace(props: { user: User; onLogout: () => void }) {
             <CustomerForm onCreate={refresh} />
             <div className="list">
               {visibleCustomers.map((customer) => (
-                <article key={customer.id} className="rowItem">
+                <article
+                  key={customer.id}
+                  className={`rowItem customerRow ${customer.id === selectedCustomerId ? "selected" : ""}`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedCustomerId(customer.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setSelectedCustomerId(customer.id);
+                    }
+                  }}
+                >
                   <strong>{customer.name}</strong>
                   <span>{customer.phone}</span>
                   <small>{customer.address}</small>
+                  <small className="rowLink">View profile</small>
                 </article>
               ))}
               {!visibleCustomers.length && <EmptyState title="No customers match">Try a different search or add a customer.</EmptyState>}
@@ -1031,6 +1230,17 @@ function Workspace(props: { user: User; onLogout: () => void }) {
             </div>
           </div>
         </section>
+
+        {selectedCustomer && (
+          <CustomerDetail
+            customer={selectedCustomer}
+            jobs={selectedCustomerJobs}
+            quotes={selectedCustomerQuotes}
+            invoices={selectedCustomerInvoices}
+            events={events}
+            onRefresh={refresh}
+          />
+        )}
 
         <section className="panel" id="quotes">
           <div className="panelHeader">

@@ -33,7 +33,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -187,7 +188,8 @@ a {
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   min-height: 42px;
   border: 1px solid var(--outline);
@@ -195,6 +197,13 @@ select {
   padding: 0 12px;
   background: white;
   color: var(--text);
+}
+
+textarea {
+  min-height: 132px;
+  padding: 12px;
+  resize: vertical;
+  line-height: 1.45;
 }
 
 .primaryButton,
@@ -1042,6 +1051,33 @@ select {
   background: var(--surface-low);
 }
 
+.customerRow {
+  cursor: pointer;
+  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+}
+
+.customerRow:hover,
+.customerRow:focus-visible {
+  border-color: var(--primary);
+  background: white;
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.customerRow.selected {
+  border-color: var(--primary);
+  background: var(--primary-container);
+}
+
+.rowLink {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: white;
+  color: var(--primary);
+  font-weight: 850;
+}
+
 .rowItem.split {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -1079,6 +1115,110 @@ select {
 .template p {
   color: var(--muted);
   line-height: 1.45;
+}
+
+.customerDetail {
+  gap: 22px;
+}
+
+.customerHero {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+  border-radius: 8px;
+  padding: 22px;
+  background: var(--inverse);
+  color: var(--inverse-text);
+}
+
+.customerHero h2 {
+  margin: 4px 0 6px;
+  font-size: clamp(1.7rem, 3vw, 2.4rem);
+  line-height: 1.08;
+}
+
+.customerHero p {
+  margin: 0;
+  color: rgba(237, 240, 255, 0.78);
+}
+
+.eyebrow {
+  color: #b2c5ff;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.customerContact {
+  display: grid;
+  gap: 8px;
+  min-width: min(280px, 100%);
+}
+
+.customerContact span {
+  border-radius: 8px;
+  padding: 9px 11px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--inverse-text);
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.customerStats,
+.customerDetailGrid,
+.customerTimeline {
+  display: grid;
+  gap: 16px;
+}
+
+.customerStats {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.customerStats .metric {
+  min-height: 112px;
+}
+
+.customerDetailGrid {
+  grid-template-columns: 1.3fr 0.7fr;
+  align-items: start;
+}
+
+.customerTimeline {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.detailColumn {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  border: 1px solid var(--outline);
+  border-radius: 8px;
+  padding: 16px;
+  background: white;
+}
+
+.detailColumn h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.quickForms {
+  display: grid;
+  gap: 12px;
+}
+
+.quickForms .inlineForm {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) 42px;
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--surface-low);
+}
+
+.compactList {
+  max-height: 300px;
 }
 
 .templateGrid {
@@ -1383,7 +1523,10 @@ select {
   .grid.three,
   .templateGrid,
   .builderLayout,
-  .attentionStrip {
+  .attentionStrip,
+  .customerStats,
+  .customerDetailGrid,
+  .customerTimeline {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -1395,7 +1538,8 @@ select {
   .inlineForm,
   #jobs .inlineForm,
   #quotes .inlineForm,
-  #invoices .inlineForm {
+  #invoices .inlineForm,
+  .quickForms .inlineForm {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -1489,11 +1633,19 @@ select {
   .templateGrid,
   .builderLayout,
   .attentionStrip,
+  .customerStats,
+  .customerDetailGrid,
+  .customerTimeline,
   .inlineForm,
   #jobs .inlineForm,
   #quotes .inlineForm,
-  #invoices .inlineForm {
+  #invoices .inlineForm,
+  .quickForms .inlineForm {
     grid-template-columns: 1fr;
+  }
+
+  .customerHero {
+    flex-direction: column;
   }
 
   .attentionCard {

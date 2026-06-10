@@ -125,6 +125,8 @@ export const api = {
   customers: () => request<Customer[]>("/customers"),
   createCustomer: (body: Omit<Customer, "id">) =>
     request<Customer>("/customers", { method: "POST", body: JSON.stringify(body) }),
+  updateCustomer: (id: number, body: Partial<Omit<Customer, "id">>) =>
+    request<Customer>(`/customers/${id}`, { method: "PUT", body: JSON.stringify(body) }),
   jobs: () => request<Job[]>("/jobs"),
   createJob: (body: Omit<Job, "id" | "customer">) =>
     request<Job>("/jobs", { method: "POST", body: JSON.stringify(body) }),
