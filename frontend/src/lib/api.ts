@@ -92,6 +92,10 @@ export function clearToken() {
   localStorage.removeItem("workpilot_token");
 }
 
+export function hasToken() {
+  return Boolean(token);
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
     ...options,

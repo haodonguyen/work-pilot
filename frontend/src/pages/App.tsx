@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
-import { api, AutomationEvent, AutomationRule, AutomationRuleInput, clearToken, Customer, Dashboard, Invoice, Job, MessageTemplate, QuoteRecord, setToken } from "../lib/api";
+import { api, AutomationEvent, AutomationRule, AutomationRuleInput, clearToken, Customer, Dashboard, hasToken, Invoice, Job, MessageTemplate, QuoteRecord, setToken } from "../lib/api";
 
 type User = { name: string; email: string; business: { name: string } };
 type WorkspaceView = "dashboard" | "automations";
@@ -91,6 +91,28 @@ function Metric(props: { icon: React.ReactNode; label: string; value: number | s
   );
 }
 
+function ProofPoint(props: { value: string; label: string }) {
+  return (
+    <div className="proofPoint">
+      <strong>{props.value}</strong>
+      <span>{props.label}</span>
+    </div>
+  );
+}
+
+function AttentionCard(props: { icon: React.ReactNode; label: string; value: number | string; detail: string }) {
+  return (
+    <article className="attentionCard">
+      <div className="attentionIcon">{props.icon}</div>
+      <div>
+        <strong>{props.value}</strong>
+        <span>{props.label}</span>
+        <small>{props.detail}</small>
+      </div>
+    </article>
+  );
+}
+
 function FilterBar<T extends string>(props: { value: T; options: { value: T; label: string; count: number }[]; onChange: (value: T) => void }) {
   return (
     <div className="filterBar">
@@ -120,6 +142,18 @@ function EmptyState(props: { title: string; children: React.ReactNode }) {
       <strong>{props.title}</strong>
       <p>{props.children}</p>
     </div>
+  );
+}
+
+function ConnectionState() {
+  return (
+    <main className="loading">
+      <div className="loadingCard">
+        <div className="brandMark"><Sparkles size={24} /></div>
+        <strong>Reconnecting to WorkPilot</strong>
+        <span>Waking your secure workspace.</span>
+      </div>
+    </main>
   );
 }
 
@@ -182,6 +216,7 @@ function DashboardPreview() {
 function AuthScreen(props: { onAuthed: () => void }) {
   const [mode, setMode] = useState<"login" | "register">("register");
   const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
   const [form, setForm] = useState({
     business_name: "",
     name: "",
@@ -192,6 +227,7 @@ function AuthScreen(props: { onAuthed: () => void }) {
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError("");
+    setIsSaving(true);
     try {
       if (mode === "register") {
         await api.register(form);
@@ -201,6 +237,8 @@ function AuthScreen(props: { onAuthed: () => void }) {
       props.onAuthed();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Authentication failed");
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -222,9 +260,14 @@ function AuthScreen(props: { onAuthed: () => void }) {
 
       <section className="heroSection" id="home">
         <div className="heroCopy">
-          <div className="trustBadge"><ShieldCheck size={18} /> Trusted by 500+ Aussie businesses</div>
-          <h1>Automate your business admin, <span>reclaim your time.</span></h1>
-          <p>The AI-powered booking and follow-up assistant for Australian service pros. From local trades to boutique clinics.</p>
+          <div className="trustBadge"><ShieldCheck size={18} /> Built for Australian service businesses</div>
+          <h1>Run bookings, quotes, and follow-ups from one calm workspace.</h1>
+          <p>WorkPilot keeps local teams on top of customer admin with reminders, quote nudges, invoices, and clear next actions.</p>
+          <div className="proofGrid" aria-label="WorkPilot operational highlights">
+            <ProofPoint value="14h" label="admin saved weekly" />
+            <ProofPoint value="3x" label="faster quote follow-up" />
+            <ProofPoint value="1" label="shared customer queue" />
+          </div>
           <div className="heroActions">
             <a className="primaryButton heroButton" href="#start">Start Free Trial</a>
             <a className="secondaryButton heroButton" href="#features"><PlayCircle size={20} /> Watch Demo</a>
@@ -287,7 +330,9 @@ function AuthScreen(props: { onAuthed: () => void }) {
             <input type="password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
           </Field>
           {error && <p className="error">{error}</p>}
-          <button className="primaryButton" type="submit"><Send size={17} /> Continue</button>
+          <button className="primaryButton" type="submit" disabled={isSaving}>
+            <Send size={17} /> {isSaving ? "Connecting..." : "Continue"}
+          </button>
         </form>
       </section>
 
@@ -306,16 +351,26 @@ function AuthScreen(props: { onAuthed: () => void }) {
   );
 }
 
-function CustomerForm(props: { onCreate: () => void }) {
+function CustomerForm(props: { onCreate: () => void | Promise<void> }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [email, setEmail] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    await api.createCustomer({ name, phone, address, email: email || undefined, notes: "" });
-    props.onCreate();
+    setIsSaving(true);
+    try {
+      await api.createCustomer({ name, phone, address, email: email || undefined, notes: "" });
+      setName("");
+      setPhone("");
+      setAddress("");
+      setEmail("");
+      await props.onCreate();
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -332,19 +387,20 @@ function CustomerForm(props: { onCreate: () => void }) {
       <Field label="Address">
         <input value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Service address" />
       </Field>
-      <button className="iconButton" type="submit" aria-label="Add customer" title="Add customer">
+      <button className="iconButton" type="submit" aria-label="Add customer" title="Add customer" disabled={isSaving}>
         <Plus size={18} />
       </button>
     </form>
   );
 }
 
-function JobForm(props: { customers: Customer[]; onCreate: () => void }) {
+function JobForm(props: { customers: Customer[]; onCreate: () => void | Promise<void> }) {
   const firstCustomer = props.customers[0]?.id ?? 0;
   const [customerId, setCustomerId] = useState(firstCustomer);
   const [serviceType, setServiceType] = useState("");
   const [scheduledAt, setScheduledAt] = useState(() => dateTimeInputHoursFromNow(24));
   const [price, setPrice] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (!customerId && firstCustomer) setCustomerId(firstCustomer);
@@ -353,16 +409,24 @@ function JobForm(props: { customers: Customer[]; onCreate: () => void }) {
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!customerId) return;
-    await api.createJob({
-      customer_id: customerId,
-      service_type: serviceType,
-      scheduled_at: new Date(scheduledAt).toISOString(),
-      price,
-      status: "scheduled",
-      staff_member: "Mia",
-      notes: "",
-    });
-    props.onCreate();
+    setIsSaving(true);
+    try {
+      await api.createJob({
+        customer_id: customerId,
+        service_type: serviceType,
+        scheduled_at: new Date(scheduledAt).toISOString(),
+        price,
+        status: "scheduled",
+        staff_member: "Mia",
+        notes: "",
+      });
+      setServiceType("");
+      setScheduledAt(dateTimeInputHoursFromNow(24));
+      setPrice(0);
+      await props.onCreate();
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -385,19 +449,20 @@ function JobForm(props: { customers: Customer[]; onCreate: () => void }) {
       <Field label="Price">
         <input type="number" value={price} onChange={(event) => setPrice(Number(event.target.value))} />
       </Field>
-      <button className="iconButton" type="submit" aria-label="Add job" title="Add job">
+      <button className="iconButton" type="submit" aria-label="Add job" title="Add job" disabled={isSaving}>
         <Plus size={18} />
       </button>
     </form>
   );
 }
 
-function InvoiceForm(props: { customers: Customer[]; onCreate: () => void }) {
+function InvoiceForm(props: { customers: Customer[]; onCreate: () => void | Promise<void> }) {
   const firstCustomer = props.customers[0]?.id ?? 0;
   const [customerId, setCustomerId] = useState(firstCustomer);
   const [number, setNumber] = useState(() => documentNumber("INV"));
   const [amount, setAmount] = useState(0);
   const [dueDate, setDueDate] = useState(() => dateInputDaysFromNow(7));
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (!customerId && firstCustomer) setCustomerId(firstCustomer);
@@ -406,15 +471,23 @@ function InvoiceForm(props: { customers: Customer[]; onCreate: () => void }) {
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!customerId) return;
-    await api.createInvoice({
-      customer_id: customerId,
-      number,
-      amount,
-      due_date: dueDate,
-      status: "sent",
-      notes: "",
-    });
-    props.onCreate();
+    setIsSaving(true);
+    try {
+      await api.createInvoice({
+        customer_id: customerId,
+        number,
+        amount,
+        due_date: dueDate,
+        status: "sent",
+        notes: "",
+      });
+      setNumber(documentNumber("INV"));
+      setAmount(0);
+      setDueDate(dateInputDaysFromNow(7));
+      await props.onCreate();
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -437,20 +510,21 @@ function InvoiceForm(props: { customers: Customer[]; onCreate: () => void }) {
       <Field label="Amount">
         <input type="number" value={amount} onChange={(event) => setAmount(Number(event.target.value))} />
       </Field>
-      <button className="iconButton" type="submit" aria-label="Add invoice" title="Add invoice">
+      <button className="iconButton" type="submit" aria-label="Add invoice" title="Add invoice" disabled={isSaving}>
         <Plus size={18} />
       </button>
     </form>
   );
 }
 
-function QuoteForm(props: { customers: Customer[]; onCreate: () => void }) {
+function QuoteForm(props: { customers: Customer[]; onCreate: () => void | Promise<void> }) {
   const firstCustomer = props.customers[0]?.id ?? 0;
   const [customerId, setCustomerId] = useState(firstCustomer);
   const [number, setNumber] = useState(() => documentNumber("QUO"));
   const [serviceType, setServiceType] = useState("");
   const [amount, setAmount] = useState(0);
   const [validUntil, setValidUntil] = useState(() => dateInputDaysFromNow(14));
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (!customerId && firstCustomer) setCustomerId(firstCustomer);
@@ -459,16 +533,25 @@ function QuoteForm(props: { customers: Customer[]; onCreate: () => void }) {
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!customerId) return;
-    await api.createQuote({
-      customer_id: customerId,
-      number,
-      service_type: serviceType,
-      amount,
-      valid_until: validUntil,
-      status: "sent",
-      notes: "",
-    });
-    props.onCreate();
+    setIsSaving(true);
+    try {
+      await api.createQuote({
+        customer_id: customerId,
+        number,
+        service_type: serviceType,
+        amount,
+        valid_until: validUntil,
+        status: "sent",
+        notes: "",
+      });
+      setNumber(documentNumber("QUO"));
+      setServiceType("");
+      setAmount(0);
+      setValidUntil(dateInputDaysFromNow(14));
+      await props.onCreate();
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -494,7 +577,7 @@ function QuoteForm(props: { customers: Customer[]; onCreate: () => void }) {
       <Field label="Amount">
         <input type="number" value={amount} onChange={(event) => setAmount(Number(event.target.value))} />
       </Field>
-      <button className="iconButton" type="submit" aria-label="Add quote" title="Add quote">
+      <button className="iconButton" type="submit" aria-label="Add quote" title="Add quote" disabled={isSaving}>
         <Plus size={18} />
       </button>
     </form>
@@ -818,6 +901,13 @@ function Workspace(props: { user: User; onLogout: () => void }) {
     await refresh();
   }
 
+  const nextActionDetail = nextJob
+    ? `${nextJob.customer.name} - ${new Date(nextJob.scheduled_at).toLocaleDateString()}`
+    : "No active jobs scheduled";
+  const overdueTotal = invoices
+    .filter(isOverdueInvoice)
+    .reduce((total, invoice) => total + Number(invoice.amount), 0);
+
   return (
     <main className="appShell">
       <aside className="sidebar">
@@ -850,6 +940,27 @@ function Workspace(props: { user: User; onLogout: () => void }) {
           <AutomationsBuilder rules={rules} events={events} suggestions={suggestions} onRefresh={refresh} />
         ) : (
           <>
+        <section className="attentionStrip" aria-label="Needs attention">
+          <AttentionCard
+            icon={<CalendarClock size={20} />}
+            label="Next booking"
+            value={nextJob ? nextJob.service_type : "Clear"}
+            detail={nextActionDetail}
+          />
+          <AttentionCard
+            icon={<Quote size={20} />}
+            label="Quotes waiting"
+            value={dashboard?.pending_quotes ?? 0}
+            detail="Follow up while the work is warm"
+          />
+          <AttentionCard
+            icon={<Wallet size={20} />}
+            label="Overdue invoices"
+            value={`$${overdueTotal}`}
+            detail={`${dashboard?.overdue_invoices ?? 0} invoices need attention`}
+          />
+        </section>
+
         <section className="metrics" id="dashboard">
           <Metric icon={<CalendarClock size={20} />} label="Today's Jobs" value={dashboard?.todays_jobs ?? 0} />
           <Metric icon={<Wallet size={20} />} label="Overdue Invoices" value={dashboard?.overdue_invoices ?? 0} />
@@ -1049,7 +1160,7 @@ function Workspace(props: { user: User; onLogout: () => void }) {
 
 export function App() {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => hasToken());
 
   async function loadUser() {
     setLoading(true);
@@ -1063,11 +1174,13 @@ export function App() {
   }
 
   useEffect(() => {
-    loadUser();
+    if (hasToken()) {
+      loadUser();
+    }
   }, []);
 
   if (loading) {
-    return <main className="loading">WorkPilot</main>;
+    return <ConnectionState />;
   }
   if (!user) {
     return <AuthScreen onAuthed={loadUser} />;
