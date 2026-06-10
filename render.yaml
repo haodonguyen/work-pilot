@@ -28,25 +28,6 @@ services:
       - key: SIGNUP_INVITE_CODE
         sync: false
 
-  - type: cron
-    name: workpilot-automation-worker
-    runtime: python
-    plan: free
-    schedule: "*/30 * * * *"
-    buildCommand: pip install -r backend/requirements.txt && PYTHONPATH=backend alembic upgrade head
-    startCommand: PYTHONPATH=backend python -m app.worker
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: workpilot-db
-          property: connectionString
-      - key: JWT_SECRET
-        generateValue: true
-      - key: JWT_ISSUER
-        value: workpilot-api
-      - key: ALLOW_SIGNUPS
-        value: true
-
   - type: web
     name: workpilot-web
     runtime: static

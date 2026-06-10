@@ -96,7 +96,6 @@ The repository includes `render.yaml` for a first MVP deployment:
 
 - `workpilot-api`: FastAPI web service
 - `workpilot-web`: static Vite frontend
-- `workpilot-automation-worker`: cron worker that runs scheduled automations
 - `workpilot-db`: managed PostgreSQL database
 
 Deploy steps:
@@ -108,6 +107,14 @@ Deploy steps:
 5. Leave `ALLOW_SIGNUPS=true` for open test registration, or set `SIGNUP_INVITE_CODE` to require a launch code.
 6. Let Render provision the database, run `alembic upgrade head`, and start the services.
 7. Open the API `/health` endpoint and the frontend URL.
+
+Optional automation worker:
+
+Render does not offer a free cron plan. For a paid automation runner, add a Render Cron Job that uses the same repository and database, runs every 30 minutes, and executes:
+
+```bash
+PYTHONPATH=backend python -m app.worker
+```
 
 Production env vars:
 
@@ -151,7 +158,7 @@ make worker-once
 
 ## Next Milestones
 
-1. Deploy the MVP on Render and verify the cron worker creates due automation events.
+1. Deploy the MVP on Render and verify the API, frontend, and database are healthy.
 2. Replace simulated AI suggestions with OpenAI API integration.
 3. Add real email/SMS delivery providers behind the existing automation event flow.
 4. Add explicit quote and invoice status transition endpoints.
