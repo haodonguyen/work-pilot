@@ -17,6 +17,13 @@ def find_rule(db: Session, business_id: int, rule_id: int) -> AutomationRule:
     return rule
 
 
+def find_event(db: Session, business_id: int, event_id: int) -> AutomationEvent:
+    event = db.query(AutomationEvent).filter_by(id=event_id, business_id=business_id).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Automation event not found")
+    return event
+
+
 @router.get("/automation-rules", response_model=list[AutomationRuleOut])
 def list_rules(user: User = Depends(current_user), db: Session = Depends(get_db)):
     return db.query(AutomationRule).filter_by(business_id=user.business_id).order_by(AutomationRule.id).all()
@@ -82,3 +89,21 @@ def list_events(user: User = Depends(current_user), db: Session = Depends(get_db
         .order_by(AutomationEvent.created_at.desc())
         .all()
     )
+
+
+@router.post("/automation-events/{event_id}/approve", response_model=AutomationEventOut)
+def approve_event(event_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    event = find_event(db, user.business_id, event_id)
+    event.status = "approved"
+    db.commit()
+    db.refresh(event)
+    return event
+
+
+@router.post("/automation-events/{event_id}/cancel", response_model=AutomationEventOut)
+def cancel_event(event_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    event = find_event(db, user.business_id, event_id)
+    event.status = "cancelled"
+    db.commit()
+    db.refresh(event)
+    return event

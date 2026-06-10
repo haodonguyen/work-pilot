@@ -1221,6 +1221,142 @@ textarea {
   max-height: 300px;
 }
 
+.outboxPanel {
+  grid-column: 1 / -1;
+}
+
+.outboxLayout {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.15fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.outboxList {
+  display: grid;
+  gap: 10px;
+  max-height: 430px;
+  overflow: auto;
+}
+
+.outboxItem {
+  display: grid;
+  gap: 5px;
+  min-height: 92px;
+  border: 1px solid var(--outline);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--surface-low);
+  color: var(--text);
+  text-align: left;
+}
+
+.outboxItem:hover,
+.outboxItem.active {
+  border-color: var(--primary);
+  background: white;
+}
+
+.outboxItem span {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: var(--surface-high);
+  color: var(--primary);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.outboxItem strong {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.outboxItem small {
+  color: var(--muted);
+}
+
+.messagePreview {
+  display: grid;
+  gap: 16px;
+  min-height: 430px;
+  border: 1px solid var(--outline);
+  border-radius: 8px;
+  padding: 20px;
+  background: var(--surface-low);
+}
+
+.previewHeader,
+.previewActions,
+.outboxSummary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.previewHeader {
+  justify-content: space-between;
+}
+
+.messagePreview p {
+  margin: 0;
+  border-radius: 8px;
+  padding: 18px;
+  background: white;
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.messagePreview dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.messagePreview dl div {
+  border-radius: 8px;
+  padding: 10px;
+  background: white;
+}
+
+.messagePreview dt {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.messagePreview dd {
+  margin: 4px 0 0;
+  color: var(--text);
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.previewActions {
+  justify-content: flex-end;
+}
+
+.outboxSummary {
+  border-top: 1px solid var(--outline);
+  padding-top: 12px;
+}
+
+.outboxSummary span {
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: var(--surface-high);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
 .templateGrid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -1526,7 +1662,8 @@ textarea {
   .attentionStrip,
   .customerStats,
   .customerDetailGrid,
-  .customerTimeline {
+  .customerTimeline,
+  .outboxLayout {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -1636,6 +1773,8 @@ textarea {
   .customerStats,
   .customerDetailGrid,
   .customerTimeline,
+  .outboxLayout,
+  .messagePreview dl,
   .inlineForm,
   #jobs .inlineForm,
   #quotes .inlineForm,
@@ -1646,6 +1785,20 @@ textarea {
 
   .customerHero {
     flex-direction: column;
+  }
+
+  .messagePreview {
+    min-height: auto;
+  }
+
+  .previewActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .previewActions .primaryButton,
+  .previewActions .dangerButton {
+    width: 100%;
   }
 
   .attentionCard {

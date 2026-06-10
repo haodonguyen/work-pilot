@@ -145,6 +145,10 @@ export const api = {
   declineQuote: (quote: QuoteRecord) =>
     request<QuoteRecord>(`/quotes/${quote.id}/decline`, { method: "POST" }),
   events: () => request<AutomationEvent[]>("/automation-events"),
+  approveEvent: (event: AutomationEvent) =>
+    request<AutomationEvent>(`/automation-events/${event.id}/approve`, { method: "POST" }),
+  cancelEvent: (event: AutomationEvent) =>
+    request<AutomationEvent>(`/automation-events/${event.id}/cancel`, { method: "POST" }),
   rules: () => request<AutomationRule[]>("/automation-rules"),
   createRule: (body: AutomationRuleInput) =>
     request<AutomationRule>("/automation-rules", { method: "POST", body: JSON.stringify(body) }),

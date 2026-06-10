@@ -743,11 +743,95 @@ function CustomerDetail(props: {
   );
 }
 
+function AutomationOutbox(props: {
+  events: AutomationEvent[];
+  title?: string;
+  onApprove: (event: AutomationEvent) => Promise<void>;
+  onCancel: (event: AutomationEvent) => Promise<void>;
+}) {
+  const [selectedId, setSelectedId] = useState<number | null>(props.events[0]?.id ?? null);
+  const selectedEvent = props.events.find((event) => event.id === selectedId) ?? props.events[0] ?? null;
+  const pendingEvents = props.events.filter((event) => !["approved", "cancelled"].includes(event.status));
+  const approvedEvents = props.events.filter((event) => event.status === "approved");
+
+  useEffect(() => {
+    if (!props.events.length) {
+      setSelectedId(null);
+      return;
+    }
+    if (!selectedId || !props.events.some((event) => event.id === selectedId)) {
+      setSelectedId(props.events[0].id);
+    }
+  }, [props.events, selectedId]);
+
+  return (
+    <section className="outboxPanel panel" id="outbox">
+      <div className="panelHeader">
+        <h2>{props.title ?? "Automation outbox"}</h2>
+        <span>{pendingEvents.length} pending</span>
+      </div>
+
+      <div className="outboxLayout">
+        <div className="outboxList">
+          {props.events.map((event) => (
+            <button
+              key={event.id}
+              className={`outboxItem ${selectedEvent?.id === event.id ? "active" : ""}`}
+              type="button"
+              onClick={() => setSelectedId(event.id)}
+            >
+              <span>{event.status}</span>
+              <strong>{event.message}</strong>
+              <small>{new Date(event.created_at).toLocaleString()}</small>
+            </button>
+          ))}
+          {!props.events.length && <EmptyState title="No messages queued">Run an automation test or create work to generate previews.</EmptyState>}
+        </div>
+
+        <div className="messagePreview">
+          {selectedEvent ? (
+            <>
+              <div className="previewHeader">
+                <span className="eyebrow">Message preview</span>
+                <StatusPill status={selectedEvent.status} tone={statusTone(selectedEvent.status)} />
+              </div>
+              <p>{selectedEvent.message}</p>
+              <dl>
+                <div><dt>Created</dt><dd>{new Date(selectedEvent.created_at).toLocaleString()}</dd></div>
+                <div><dt>Rule</dt><dd>{selectedEvent.rule_id ? `#${selectedEvent.rule_id}` : "Manual/system"}</dd></div>
+                <div><dt>Job</dt><dd>{selectedEvent.job_id ? `#${selectedEvent.job_id}` : "Not linked"}</dd></div>
+              </dl>
+              <div className="previewActions">
+                <button className="primaryButton compact" onClick={() => props.onApprove(selectedEvent)} disabled={selectedEvent.status === "approved"}>
+                  <CheckCircle2 size={17} /> Approve
+                </button>
+                <button className="dangerButton compact" onClick={() => props.onCancel(selectedEvent)} disabled={selectedEvent.status === "cancelled"}>
+                  <XCircle size={17} /> Cancel
+                </button>
+              </div>
+            </>
+          ) : (
+            <EmptyState title="No preview selected">Automation messages will appear here before real delivery is connected.</EmptyState>
+          )}
+        </div>
+      </div>
+
+      <div className="outboxSummary">
+        <span>{props.events.length} total previews</span>
+        <span>{approvedEvents.length} approved</span>
+        <span>{props.events.filter((event) => event.status === "cancelled").length} cancelled</span>
+      </div>
+    </section>
+  );
+}
+
 function AutomationsBuilder(props: {
   rules: AutomationRule[];
   events: AutomationEvent[];
   suggestions: { title: string; reason: string; rule: string }[];
   onRefresh: () => Promise<void>;
+  onApproveEvent: (event: AutomationEvent) => Promise<void>;
+  onCancelEvent: (event: AutomationEvent) => Promise<void>;
 }) {
   const [selectedId, setSelectedId] = useState<number | null>(props.rules[0]?.id ?? null);
   const [isCreating, setIsCreating] = useState(false);
@@ -925,15 +1009,21 @@ function AutomationsBuilder(props: {
             <p>94% of tasks completed autonomously this week.</p>
           </div>
           <div className="healthCard" id="activity">
-            <div className="panelHeader"><h3>Recent tests</h3><span>{props.events.length}</span></div>
+            <div className="panelHeader"><h3>Outbox status</h3><span>{props.events.length}</span></div>
             <div className="miniActivity">
-              {props.events.slice(0, 4).map((event) => (
-                <p key={event.id}>{event.message}</p>
-              ))}
+              <p>{props.events.filter((event) => event.status === "approved").length} approved message previews</p>
+              <p>{props.events.filter((event) => event.status === "cancelled").length} cancelled message previews</p>
+              <p>{props.events.filter((event) => !["approved", "cancelled"].includes(event.status)).length} waiting for review</p>
             </div>
           </div>
         </aside>
       </div>
+      <AutomationOutbox
+        events={props.events}
+        title="Automation outbox"
+        onApprove={props.onApproveEvent}
+        onCancel={props.onCancelEvent}
+      />
     </section>
   );
 }
@@ -1087,6 +1177,16 @@ function Workspace(props: { user: User; onLogout: () => void }) {
     await refresh();
   }
 
+  async function approveEvent(event: AutomationEvent) {
+    await api.approveEvent(event);
+    await refresh();
+  }
+
+  async function cancelEvent(event: AutomationEvent) {
+    await api.cancelEvent(event);
+    await refresh();
+  }
+
   const nextActionDetail = nextJob
     ? `${nextJob.customer.name} - ${new Date(nextJob.scheduled_at).toLocaleDateString()}`
     : "No active jobs scheduled";
@@ -1123,7 +1223,14 @@ function Workspace(props: { user: User; onLogout: () => void }) {
         </header>
 
         {view === "automations" ? (
-          <AutomationsBuilder rules={rules} events={events} suggestions={suggestions} onRefresh={refresh} />
+          <AutomationsBuilder
+            rules={rules}
+            events={events}
+            suggestions={suggestions}
+            onRefresh={refresh}
+            onApproveEvent={approveEvent}
+            onCancelEvent={cancelEvent}
+          />
         ) : (
           <>
         <section className="attentionStrip" aria-label="Needs attention">
@@ -1333,18 +1440,7 @@ function Workspace(props: { user: User; onLogout: () => void }) {
               ))}
             </div>
           </div>
-          <div className="panel">
-            <div className="panelHeader"><h2>Activity</h2><span>{events.length}</span></div>
-            <div className="list">
-              {events.map((event) => (
-                <article key={event.id} className="rowItem">
-                  <strong>{event.status}</strong>
-                  <span>{event.message}</span>
-                  <small>{new Date(event.created_at).toLocaleString()}</small>
-                </article>
-              ))}
-            </div>
-          </div>
+          <AutomationOutbox events={events} title="Message preview outbox" onApprove={approveEvent} onCancel={cancelEvent} />
         </section>
 
         <section className="panel">

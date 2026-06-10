@@ -182,6 +182,49 @@ def test_automation_rule_lifecycle_creates_test_event():
     assert "Generate payment reminder" in event.json()["message"]
 
 
+def test_automation_event_can_be_approved_and_cancelled():
+    headers = auth_headers()
+    created = client.post(
+        "/automation-rules",
+        headers=headers,
+        json={
+            "name": "Review approval",
+            "trigger": "job.completed",
+            "condition": "Job was completed",
+            "action": "Generate review request",
+            "enabled": True,
+        },
+    )
+    assert created.status_code == 201
+
+    event = client.post(f"/automation-rules/{created.json()['id']}/test", headers=headers)
+    assert event.status_code == 200
+    event_id = event.json()["id"]
+    assert event.json()["status"] == "simulated"
+
+    approved = client.post(f"/automation-events/{event_id}/approve", headers=headers)
+    assert approved.status_code == 200
+    assert approved.json()["status"] == "approved"
+
+    cancelled = client.post(f"/automation-events/{event_id}/cancel", headers=headers)
+    assert cancelled.status_code == 200
+    assert cancelled.json()["status"] == "cancelled"
+
+
+def test_automation_event_actions_are_business_scoped():
+    owner_headers = auth_headers()
+    other_headers = auth_headers()
+    rules = client.get("/automation-rules", headers=owner_headers)
+    assert rules.status_code == 200
+    rule_id = rules.json()[0]["id"]
+    event = client.post(f"/automation-rules/{rule_id}/test", headers=owner_headers)
+    assert event.status_code == 200
+
+    response = client.post(f"/automation-events/{event.json()['id']}/approve", headers=other_headers)
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Automation event not found"
+
+
 def test_automation_rule_with_events_cannot_be_deleted():
     headers = auth_headers()
     rules = client.get("/automation-rules", headers=headers)
