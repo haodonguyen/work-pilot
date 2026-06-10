@@ -98,6 +98,8 @@ The repository includes `render.yaml` for a first MVP deployment:
 - `workpilot-web`: static Vite frontend
 - `workpilot-db`: managed PostgreSQL database
 
+The repo also includes `.python-version` to pin Render's Python runtime to 3.12 for backend dependency compatibility.
+
 Deploy steps:
 
 1. Push the latest `main` branch to GitHub.
